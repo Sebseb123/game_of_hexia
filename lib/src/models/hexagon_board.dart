@@ -51,7 +51,10 @@ class HexagonBoard {
       });
   }
 
-
+  ///Die Chips werden wie folgt verteilt: Wähle eine Ecke auf dem Spielbrett (hier einfach rechts-oben)
+  ///und dann im Uhrzeigersinn alphabetisch anordnern (Spirale nach innen)
+  ///boardRadius ist die Anzahl der Felder von Mitte bis Rand
+  void placeNumberDiscs(int boardRadius) {
   //Das sind diese Chips die man auf die Spielbretter legt
   //1x "2" (B:)
   //2x "3" (D, Q)
@@ -64,28 +67,45 @@ class HexagonBoard {
   //2x "10" (F, L)
   //2x "11" (I, R)
   //1x "12" (H)
-  //            referenceList=   A, B, C, D, E, F, G, H,  I,   J, K, L,  M, N, O, P, Q,  R
-  final List<int> numberDiscs = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3,  11];
+  //      referenceList=   A, B, C, D, E, F, G, H,  I,   J, K, L,  M, N, O, P, Q,  R
+  final List<int> discs = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3,  11];
 
 
+    const List<({int x, int y})> directions = [
+    (x: -1, y: 0),  // links
+    (x: 0,  y: 1),  // links-runter
+    (x: 1,  y: 1),  // rechts-runter
+    (x: 1,  y: 0),  // rechts
+    (x: 0,  y: -1), // rechts-hoch
+    (x: -1, y: -1), // links-hoch
+    ];
 
-  ///Die Chips werden wie folgt verteilt: Wähle eine Ecke auf dem Spielbrett (hier einfach rechts-oben)
-  ///und dann im Uhrzeigersinn alphabetisch anordnern (Spirale nach innen)
-  void placeNumberDiscs(List<int> discs) {
-    //Dieser Loop holt das Hexagon "rechts-oben". Beim klassischen Spielbrett das Hexagon (4,0)
-    int maxX = 0;
-    for (var key in _grid.keys) {
-      if (key.y == 0 && key.x > maxX) {
-        maxX = key.x;
+    int discIndex = 0;
+    //Arbeite das Board in Zwiebelschichten ab, beim Standardboard ist radius = 2
+    for (int radius = boardRadius; radius > 0; radius --) {
+      //Starte rechts-oben, also Standardbrett bei (4,0)
+      ({int x, int y}) current = (x: radius * 2, y: 0);
+
+      //Jeder Zwiebelring hat 6 Seiten
+      for (int side = 0; side < 6; side++) {
+        final dir = directions[side];
+
+        //Hexagon für Hexagon
+        for (int step = 0; step < radius; step ++) {
+          final hexagon = _grid[current];
+          if(hexagon != null && hexagon.type != HexagonType.empty) {
+            hexagon.numberDisc = discs[discIndex];
+            discIndex++;
+          }
+
+          //Update current: Gehe ein Hexagon weiter in der Spiral
+          current = (x: current.x + dir.x, y: current.y + dir.y);
+
+        }
       }
     }
-    ({int x, int y}) startingHexAxial = (x: maxX, y: 0);
-    
-    //hier algorithmus um gegen den Uhrzeigersinn
-    //...
-    //Wüste überspringen nicht vergessen
-
   }
+
 
   //Returns the (x, y) index of a neighbour given the direction
   //Only works with Hexagons (axial coords) and the tileDirections
@@ -213,7 +233,7 @@ class Node {
 class Hexagon {
   //Hier wird x und y als Axial-Punkt übergeben. Center ist aber eine karthesische Koordiante
   //deswegen wird umgerechnet
-  Hexagon({required this.type, this._numberDisc, required int x, required int y}) 
+  Hexagon({required this.type, required int x, required int y}) 
     : axial = (x:x , y:y),
     center = (
       x: x + (y.isEven? 0.0 : 0.5),  // x-Offset: Die Hexagons zweier Reihen sind immer um genau 0.5 verschoben
@@ -222,8 +242,9 @@ class Hexagon {
 
   final ({int x, int y}) axial;
   HexagonType type;
-  int? _numberDisc;   //jedes Hexagon hat ja einen Wert fürs Würfeln zum Ressourcen vergeben
+  int numberDisc = 0;   //jedes Hexagon hat ja einen Wert fürs Würfeln zum Ressourcen vergeben
   final Point2D center; //cartesian coordinates
+
 
   //Das sind die jeweiligen Ecken des Hexagons mit den entsprechenden Koords
   ({double x, double y}) get top => (x: center.x + 0.0, y: center.y - 0.5);
