@@ -4,6 +4,9 @@ void main() {
   HexagonBoard board = HexagonBoard();
   board.placeHexagons();
   print(board);
-  print(board.getHexagon(2, 0));
+  var node = board.getHexagon(2, 0)!.bottomRight;
   print(board.initNodes().length);
+  final adjacentHexagons = board.getAdjacentHexagonsToNode(Node(x: node.x, y: node.y));
+  print(adjacentHexagons);
+
 }

@@ -52,7 +52,7 @@ class HexagonBoard {
   }
 
   //Returns the (x, y) index of a neighbour given the direction
-  //Only works with Hexagons and the tileDirections
+  //Only works with Hexagons (axial coords) and the tileDirections
   ({int x, int y})? getNeighbour(int x, int y, (int, int) direction) {
     return (x: x + direction.$1, y: y + direction.$2);
   }
@@ -78,10 +78,30 @@ class HexagonBoard {
     return nodes;
   }
 
-  List<HexagonType> getAdjacentHexagonTypes(Node node) {
-    List<HexagonType> getAdjacentHexagonTypes = [];
+  //Für eine gegebene Ecke werden die angrenzenden Hexagons zurückgegeben
+  Set<Hexagon> getAdjacentHexagonsToNode(Node node) {
+    Set<Hexagon> adjacentHexagons = {};
+    
+    //Siehe @Hexagon. Dort werden die Koordinaten zu den Ecken aus den Hexagon centern berechnet
+    //Dies ist einfach die inverse Funktion und gibt die Richtungen für mögliche Hexagon center an
+    List<Point2D> directions = [
+        (x: node.x + 0.0, y: node.y + 0.5),   // top
+        (x: node.x - 0.5, y: node.y + 0.25),  // topRight
+        (x: node.x - 0.5, y: node.y - 0.25),  // bottomRight
+        (x: node.x + 0.0, y: node.y - 0.5),   // bottom
+        (x: node.x + 0.5, y: node.y - 0.25),  // bottomLeft
+        (x: node.x + 0.5, y: node.y + 0.25),  // topLeft
+      ];
 
-    return getAdjacentHexagonTypes;
+    for(var dir in directions) {
+      final axialCoord = Hexagon.cartesianToAxial(dir.x, dir.y);
+      final hexagon = _grid[axialCoord];
+      if (hexagon != null) {
+        adjacentHexagons.add(hexagon);
+      }
+    }
+
+    return adjacentHexagons;
   }
 
   //Using the same Loop as the Constructor, but here it returns a String
@@ -158,11 +178,13 @@ class Hexagon {
   //Hier wird x und y als Axial-Punkt übergeben. Center ist aber eine karthesische Koordiante
   //deswegen wird umgerechnet
   Hexagon({required this.type, this._numberDisc, required int x, required int y}) 
-    :center = (
+    : axial = (x:x , y:y),
+    center = (
       x: x + (y.isEven? 0.0 : 0.5),  // x-Offset: Die Hexagons zweier Reihen sind immer um genau 0.5 verschoben
       y: 0.5 + y * 0.75   //y- Offsett: Hexagon center an der y-Achse ist wie folgt: 0.5, 1.25, 2.0, 2.75, 3.5
     );                    
 
+  final ({int x, int y}) axial;
   HexagonType type;
   int? _numberDisc;   //jedes Hexagon hat ja einen Wert fürs Würfeln zum Ressourcen vergeben
   final Point2D center; //cartesian coordinates
@@ -174,6 +196,14 @@ class Hexagon {
   ({double x, double y}) get bottom => (x: center.x + 0.0, y: center.y + 0.5);
   ({double x, double y}) get bottomLeft => (x: center.x - 0.5, y: center.y + 0.25);
   ({double x, double y}) get topLeft => (x: center.x - 0.5, y: center.y - 0.25);
+
+  //Diese Funktion wandelt dann die karthesischen Koordinaten zurück in Axial-Koords
+  //Damit kann man das Hexagon wieder eindeutig im HexagonBoard finden
+  static ({int x, int y}) cartesianToAxial(double x, double y) {
+    int axialY = ((y - 0.5) * 4 / 3).toInt();
+    int axialX = (axialY.isEven ? x : x - 0.5).toInt();
+    return (x: axialX, y: axialY);
+  }
 
   @override
   String toString() {
