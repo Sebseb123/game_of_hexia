@@ -51,6 +51,42 @@ class HexagonBoard {
       });
   }
 
+
+  //Das sind diese Chips die man auf die Spielbretter legt
+  //1x "2" (B:)
+  //2x "3" (D, Q)
+  //2x "4" (J, N)
+  //2x "5" (A, O)
+  //2x "6" (C, P)
+  // 7 ist der Bandit
+  //2x "8" (E, K)
+  //2x "9" (G, M)
+  //2x "10" (F, L)
+  //2x "11" (I, R)
+  //1x "12" (H)
+  //            referenceList=   A, B, C, D, E, F, G, H,  I,   J, K, L,  M, N, O, P, Q,  R
+  final List<int> numberDiscs = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3,  11];
+
+
+
+  ///Die Chips werden wie folgt verteilt: Wähle eine Ecke auf dem Spielbrett (hier einfach rechts-oben)
+  ///und dann im Uhrzeigersinn alphabetisch anordnern (Spirale nach innen)
+  void placeNumberDiscs(List<int> discs) {
+    //Dieser Loop holt das Hexagon "rechts-oben". Beim klassischen Spielbrett das Hexagon (4,0)
+    int maxX = 0;
+    for (var key in _grid.keys) {
+      if (key.y == 0 && key.x > maxX) {
+        maxX = key.x;
+      }
+    }
+    ({int x, int y}) startingHexAxial = (x: maxX, y: 0);
+    
+    //hier algorithmus um gegen den Uhrzeigersinn
+    //...
+    //Wüste überspringen nicht vergessen
+
+  }
+
   //Returns the (x, y) index of a neighbour given the direction
   //Only works with Hexagons (axial coords) and the tileDirections
   ({int x, int y})? getNeighbour(int x, int y, (int, int) direction) {
@@ -210,10 +246,6 @@ class Hexagon {
     return type.name;
   }
 }
-
-
-//Das sind diese Chips, die auf die Felder gehen. Je nach Würfelergebnis werden dann Rohstoffe ausgeteilt
-const List<int> numberDiscs = [2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12];
 
 enum PlayerType {
   blue, red, yellow, green, none;

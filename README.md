@@ -22,3 +22,7 @@ lib/
     │
     └── views/
         ├── 
+
+
+Der Konstruktor von HexagonBoard erzeugt ein Spielbrett mit 19 Felder.
+Wäre besser das zu verallgemeiern um ein Brett beliebiger Größe zu erstellen.
