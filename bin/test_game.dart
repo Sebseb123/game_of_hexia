@@ -4,4 +4,6 @@ void main() {
   HexagonBoard board = HexagonBoard();
   board.placeHexagons();
   print(board);
+  print(board.getHexagon(2, 0));
+  print(board.initNodes().length);
 }
