@@ -1,7 +1,7 @@
-///Das HexagonBoard besteht aus Hexagons. Hexagons sind einmal über einen Index adressierbar (der key in _grid), 
-///besitzen aber auch eine Koordinate (center). Jedes Hexagon hat 6 Ecken, die wiederum auch über eine Koordinate verfügen
+///Das HexagonBoard besteht aus Hexagons. Hexagons sind einmal über einen Index bzw AxialKoord. adressierbar (der key in _grid), 
+///besitzen aber auch eine karthesische Koordinate (center). Jedes Hexagon hat 6 Ecken, die wiederum auch über eine karthesische Koordinate verfügen
 class HexagonBoard {
-  final Map<({int x, int y}), Hexagon> _grid = {};
+  final Map<({int x, int y}), Hexagon> _grid = {};   // Der Schlüssel ist ein Axial Koordinatenpunkt
 
   //Each tile/hexagon has 6 different directions/borders
   final tileDirections = [
@@ -120,7 +120,7 @@ enum HexagonType {
   const HexagonType({required this.name});
 }
 
-///Record to hold a 2D Point
+///Record to hold a 2D Point in cartesian 
 typedef Point2D = ({double x, double y});
 
 //Eigentlich spielt sich alles auf den Knoten zwischen den Hexagons ab. Jeder Knoten grenzt an 1-3 Hexagons
@@ -155,6 +155,8 @@ class Node {
 
 //The game tile
 class Hexagon {
+  //Hier wird x und y als Axial-Punkt übergeben. Center ist aber eine karthesische Koordiante
+  //deswegen wird umgerechnet
   Hexagon({required this.type, this._numberDisc, required int x, required int y}) 
     :center = (
       x: x + (y.isEven? 0.0 : 0.5),  // x-Offset: Die Hexagons zweier Reihen sind immer um genau 0.5 verschoben
@@ -163,7 +165,7 @@ class Hexagon {
 
   HexagonType type;
   int? _numberDisc;   //jedes Hexagon hat ja einen Wert fürs Würfeln zum Ressourcen vergeben
-  final Point2D center;
+  final Point2D center; //cartesian coordinates
 
   //Das sind die jeweiligen Ecken des Hexagons mit den entsprechenden Koords
   ({double x, double y}) get top => (x: center.x + 0.0, y: center.y - 0.5);
