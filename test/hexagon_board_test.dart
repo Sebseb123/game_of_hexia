@@ -2,8 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 
 void main() {
+  test('creates boards with the correct number of hexagons', () {
+    expect(HexagonBoard(radius: 1).length, 7);
+    expect(HexagonBoard(radius: 2).length, 19);
+    expect(HexagonBoard(radius: 3).length, 37);
+  });
+
   test('finds the three hexagons adjacent to a shared node', () {
-    final board = HexagonBoard();
+    final board = HexagonBoard(radius: 2);
     board.placeHexagons();
     board.initNodes();
     final node = board.getHexagon(2, 0)!.bottomRight;
@@ -13,13 +19,10 @@ void main() {
     );
 
     expect(adjacentHexagons, hasLength(3));
-    expect(
-      adjacentHexagons.map((hexagon) => hexagon.axial).toSet(),
-      {
-        (x: 2, y: 0),
-        (x: 3, y: 0),
-        (x: 2, y: 1),
-      },
-    );
+    expect(adjacentHexagons.map((hexagon) => hexagon.axial).toSet(), {
+      (x: 2, y: 0),
+      (x: 3, y: 0),
+      (x: 2, y: 1),
+    });
   });
 }
