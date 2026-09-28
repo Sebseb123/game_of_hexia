@@ -1,19 +1,20 @@
+import 'package:game_of_hexia/src/models/player.dart';
+import 'package:game_of_hexia/src/models/resource_type.dart';
+import 'package:game_of_hexia/src/models/building_type.dart';
+
+
 ///Das HexagonBoard besteht aus Hexagons. Hexagons sind einmal über einen Index bzw AxialKoord. adressierbar (der key in _grid),
 ///besitzen aber auch eine karthesische Koordinate (center). Jedes Hexagon hat 6 Ecken, die wiederum auch über eine karthesische Koordinate verfügen
 class HexagonBoard {
   final int radius;
-  final Map<({int x, int y}), Hexagon> _grid =
-      {}; // Der Schlüssel ist ein Axial Koordinatenpunkt
+  final Map<({int x, int y}), Hexagon> _grid = {};   // Der Schlüssel ist ein Axial Koordinatenpunkt
+  final Map<Point2D, Node> _nodes = {};
 
   //Each tile/hexagon has 6 different directions/borders
   final tileDirections = [
-    (0, -1),
-    (1, -1),
-    (-1, 0),
-    /* Hexa */ (1, 0),
-    (-1, 1),
-    (0, 1),
-  ];
+       (0,-1),   (1, -1),
+    (-1, 0),/* Hexa */ (1, 0),
+       (-1, 1),   (0, 1)];
 
   /// Creates an empty hexagonal game board with the given radius.
   HexagonBoard({required this.radius}) {
@@ -26,7 +27,7 @@ class HexagonBoard {
     int startX = radius;
     for (int y = 0; y <= radius; y++) {
       for (int x = startX; x < 2 * radius + 1; x++) {
-        _grid[(x: x, y: y)] = Hexagon(type: HexagonType.empty, x: x, y: y);
+        _grid[(x: x, y: y)] = Hexagon(type: ResourceType.empty, x: x, y: y);
       }
       startX--;
     }
@@ -34,20 +35,21 @@ class HexagonBoard {
     int endX = radius * 2;
     for (int y = radius + 1; y < 2 * radius + 1; y++) {
       for (int x = 0; x < endX; x++) {
-        _grid[(x: x, y: y)] = Hexagon(type: HexagonType.empty, x: x, y: y);
+        _grid[(x: x, y: y)] = Hexagon(type: ResourceType.empty, x: x, y: y);
       }
       endX--;
     }
+    initNodes();
   }
 
   //Use this to place hexagons randomly on board
   void placeHexagons() {
     const resourceTypes = [
-      HexagonType.wood,
-      HexagonType.cattle,
-      HexagonType.fish,
-      HexagonType.stone,
-      HexagonType.iron,
+      ResourceType.wood,
+      ResourceType.cattle,
+      ResourceType.fish,
+      ResourceType.stone,
+      ResourceType.iron,
     ];
     // Standard board ratio: 4 wood, cattle and fish; 3 stone and iron.
     const resourceWeights = [4, 4, 4, 3, 3];
@@ -55,10 +57,10 @@ class HexagonBoard {
     // Keep roughly one desert for every standard-sized board section.
     final desertCount = (length / 19).round().clamp(1, length).toInt();
     final resourceTileCount = length - desertCount;
-    final tileTypes = <HexagonType>[];
+    final tileTypes = <ResourceType>[];
 
     for (var i = 0; i < desertCount; i++) {
-      tileTypes.add(HexagonType.empty);
+      tileTypes.add(ResourceType.empty);
     }
 
     var assignedResourceTiles = 0;
@@ -89,26 +91,8 @@ class HexagonBoard {
 
   /// Places number discs in a spiral, starting at the outer top-right corner.
   void placeNumberDiscs() {
-    const standardDiscs = [
-      5,
-      2,
-      6,
-      3,
-      8,
-      10,
-      9,
-      12,
-      11,
-      4,
-      8,
-      10,
-      9,
-      4,
-      5,
-      6,
-      3,
-      11,
-    ];
+    const List<int> standardDiscs = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11];
+
     const directions = [
       (x: -1, y: 0),
       (x: -1, y: 1),
@@ -130,9 +114,8 @@ class HexagonBoard {
         final dir = directions[side];
         for (var step = 0; step < ring; step++) {
           final hexagon = _grid[current];
-          if (hexagon != null && hexagon.type != HexagonType.empty) {
-            hexagon.numberDisc =
-                standardDiscs[discIndex % standardDiscs.length];
+          if (hexagon != null && hexagon.type != ResourceType.empty) {
+            hexagon.numberDisc = standardDiscs[discIndex % standardDiscs.length];
             discIndex++;
           }
           current = (x: current.x + dir.x, y: current.y + dir.y);
@@ -141,9 +124,8 @@ class HexagonBoard {
     }
 
     final centerHexagon = _grid[(x: radius, y: radius)];
-    if (centerHexagon != null && centerHexagon.type != HexagonType.empty) {
-      centerHexagon.numberDisc =
-          standardDiscs[discIndex % standardDiscs.length];
+    if (centerHexagon != null && centerHexagon.type != ResourceType.empty) {
+      centerHexagon.numberDisc = standardDiscs[discIndex % standardDiscs.length];
     }
   }
 
@@ -161,19 +143,47 @@ class HexagonBoard {
     return _grid[(x: x, y: y)];
   }
 
-  //Erzeugt für jedes Hexagon die jeweiligen Knoten. Da keine Dubletten in Sets zugelassen sind,
-  //erscheinen die gleichen Knotenpunkte nicht doppelt. Könnte man auch mit einer Hashmap realisieren
+  // returns a hexagon that has the given number on it (the dices rolled its number)
+  List<Hexagon> getHexagonWithRolledNumber(int diceValue) {
+    return _grid.values
+        .where((hexagon) => hexagon.numberDisc == diceValue)
+        .toList();
+  }
+
+  // returns a Node by its given coordinates
+  Node? getNode(double x, double y) {
+    return _nodes[(x: x, y: y)];
+  }
+
+  // Creates each board node once and keeps it available for ownership and buildings.
   Set<Node> initNodes() {
-    Set<Node> nodes = {};
     _grid.forEach((_, hexagon) {
-      nodes.add(Node(x: hexagon.top.x, y: hexagon.top.y));
-      nodes.add(Node(x: hexagon.topRight.x, y: hexagon.topRight.y));
-      nodes.add(Node(x: hexagon.bottomRight.x, y: hexagon.bottomRight.y));
-      nodes.add(Node(x: hexagon.bottom.x, y: hexagon.bottom.y));
-      nodes.add(Node(x: hexagon.bottomLeft.x, y: hexagon.bottomLeft.y));
-      nodes.add(Node(x: hexagon.topLeft.x, y: hexagon.topLeft.y));
+      _nodes.putIfAbsent(
+        hexagon.top,
+        () => Node(x: hexagon.top.x, y: hexagon.top.y),
+      );
+      _nodes.putIfAbsent(
+        hexagon.topRight,
+        () => Node(x: hexagon.topRight.x, y: hexagon.topRight.y),
+      );
+      _nodes.putIfAbsent(
+        hexagon.bottomRight,
+        () => Node(x: hexagon.bottomRight.x, y: hexagon.bottomRight.y),
+      );
+      _nodes.putIfAbsent(
+        hexagon.bottom,
+        () => Node(x: hexagon.bottom.x, y: hexagon.bottom.y),
+      );
+      _nodes.putIfAbsent(
+        hexagon.bottomLeft,
+        () => Node(x: hexagon.bottomLeft.x, y: hexagon.bottomLeft.y),
+      );
+      _nodes.putIfAbsent(
+        hexagon.topLeft,
+        () => Node(x: hexagon.topLeft.x, y: hexagon.topLeft.y),
+      );
     });
-    return nodes;
+    return _nodes.values.toSet();
   }
 
   //Für eine gegebene Ecke werden die angrenzenden Hexagons zurückgegeben
@@ -211,7 +221,7 @@ class HexagonBoard {
       for (int x = startX; x < 2 * radius + 1; x++) {
         final hexagon = _grid[(x: x, y: y)]!;
         // Ausgeben der Ziffer, die man für das Ressourcenfeld würfeln muss
-        if (hexagon.type == HexagonType.empty) {
+        if (hexagon.type == ResourceType.empty) {
           buffer.write('[Desert:0]');
         } else {
           buffer.write('[${hexagon.type.name}:${hexagon.numberDisc}]');
@@ -225,7 +235,7 @@ class HexagonBoard {
       for (int x = 0; x < endX; x++) {
         // Ausgeben der Ziffer, die man für das Ressourcenfeld würfeln muss
         final hexagon = _grid[(x: x, y: y)]!;
-        if (hexagon.type == HexagonType.empty) {
+        if (hexagon.type == ResourceType.empty) {
           buffer.write('[Desert:0]');
         } else {
           buffer.write('[${hexagon.type.name}:${hexagon.numberDisc}]');
@@ -238,17 +248,8 @@ class HexagonBoard {
   }
 }
 
-enum HexagonType {
-  stone(name: "Stone"),
-  wood(name: "Wood"),
-  cattle(name: "Cattle"),
-  fish(name: "Fish"),
-  iron(name: "Iron"),
-  empty(name: "Empty");
 
-  final String name;
-  const HexagonType({required this.name});
-}
+
 
 ///Record to hold a 2D Point in cartesian
 typedef Point2D = ({double x, double y});
@@ -265,20 +266,24 @@ typedef Point2D = ({double x, double y});
 //(1.75, 0.25)          (2.25, 0.25)
 //
 //            (2, 0.5)
+// A node can be owned by a player and a building (settlement or city) can be placed on a node
 class Node {
   Node({required this.x, required this.y});
   final double x;
   final double y;
+  PlayerColor? owner;
+  BuildingType? building;
+
 
   // Vergleichsoperator damit bei @initNodes() nicht die gleichen Nodes in das Set kommen
-  // Set sind diese Methodne bekannt und nutzt sie automatisch
+  // Set sind diese Methoden bekannt und nutzt sie automatisch
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is Node && other.x == x && other.y == y;
   }
 
-  //Siehe oben
+  //Siehe Methode "bool operator"
   @override
   int get hashCode => Object.hash(x, y);
 }
@@ -295,21 +300,27 @@ class Hexagon {
       );
 
   final ({int x, int y}) axial;
-  HexagonType type;
-  int numberDisc =
-      0; //jedes Hexagon hat ja einen Wert fürs Würfeln zum Ressourcen vergeben
+  ResourceType type;
+  int numberDisc = 0; //jedes Hexagon hat ja einen Wert fürs Würfeln zum Ressourcen vergeben
   final Point2D center; //cartesian coordinates
 
   //Das sind die jeweiligen Ecken des Hexagons mit den entsprechenden Koords
   ({double x, double y}) get top => (x: center.x + 0.0, y: center.y - 0.5);
-  ({double x, double y}) get topRight =>
-      (x: center.x + 0.5, y: center.y - 0.25);
-  ({double x, double y}) get bottomRight =>
-      (x: center.x + 0.5, y: center.y + 0.25);
+  ({double x, double y}) get topRight => (x: center.x + 0.5, y: center.y - 0.25);
+  ({double x, double y}) get bottomRight => (x: center.x + 0.5, y: center.y + 0.25);
   ({double x, double y}) get bottom => (x: center.x + 0.0, y: center.y + 0.5);
-  ({double x, double y}) get bottomLeft =>
-      (x: center.x - 0.5, y: center.y + 0.25);
+  ({double x, double y}) get bottomLeft => (x: center.x - 0.5, y: center.y + 0.25);
   ({double x, double y}) get topLeft => (x: center.x - 0.5, y: center.y - 0.25);
+
+  // Gibt eine Liste mit allen Ecken des Hexagons zurück
+  List<Point2D> get corners => [
+    top,
+    topRight,
+    bottomRight,
+    bottom,
+    bottomLeft,
+    topLeft,
+  ];
 
   //Diese Funktion wandelt dann die karthesischen Koordinaten zurück in Axial-Koords
   //Damit kann man das Hexagon wieder eindeutig im HexagonBoard finden
@@ -324,5 +335,3 @@ class Hexagon {
     return type.name;
   }
 }
-
-enum PlayerType { blue, red, yellow, green, none }
