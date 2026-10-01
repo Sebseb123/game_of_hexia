@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
+import 'package:game_of_hexia/src/models/node.dart';
+
 
 void main() {
   test('creates boards with the correct number of hexagons', () {

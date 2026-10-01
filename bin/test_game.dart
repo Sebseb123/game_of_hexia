@@ -2,6 +2,8 @@ import 'package:game_of_hexia/src/logic/dice.dart';
 import 'package:game_of_hexia/src/logic/game_controller.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/player.dart';
+import 'package:game_of_hexia/src/models/node.dart';
+
 
 import 'dart:io';
 

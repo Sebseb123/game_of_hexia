@@ -1,6 +1,7 @@
-import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
-import 'package:game_of_hexia/src/models/building_type.dart';
+import 'package:game_of_hexia/src/models/node.dart';
+import 'package:game_of_hexia/src/models/hexagon.dart';
+
 
 
 ///Das HexagonBoard besteht aus Hexagons. Hexagons sind einmal über einen Index bzw AxialKoord. adressierbar (der key in _grid),
@@ -108,6 +109,7 @@ class HexagonBoard {
 
     var discIndex = 0;
     for (var ring = radius; ring > 0; ring--) {
+      // Startposition rechts oben für den Ring
       var current = (x: radius + ring, y: radius - ring);
 
       for (var side = 0; side < 6; side++) {
@@ -251,87 +253,4 @@ class HexagonBoard {
 
 
 
-///Record to hold a 2D Point in cartesian
-typedef Point2D = ({double x, double y});
 
-//Eigentlich spielt sich alles auf den Knoten zwischen den Hexagons ab. Jeder Knoten grenzt an 1-3 Hexagons
-//und hat möglicherweise einen Besitzer (Stadt)
-//Die Koordinaten könnten sich wie auf https://www.redblobgames.com/grids/hexagons/#basics darstellen lassen
-//Also für das erste Hexagon (2,0) <-- das ist center
-// gäbe es die Knoten mit Positionen:
-//            (2, -0.5)
-//
-//(1.75, -0.25)         (2.25, -0.25)
-//
-//(1.75, 0.25)          (2.25, 0.25)
-//
-//            (2, 0.5)
-// A node can be owned by a player and a building (settlement or city) can be placed on a node
-class Node {
-  Node({required this.x, required this.y});
-  final double x;
-  final double y;
-  PlayerColor? owner;
-  BuildingType? building;
-
-
-  // Vergleichsoperator damit bei @initNodes() nicht die gleichen Nodes in das Set kommen
-  // Set sind diese Methoden bekannt und nutzt sie automatisch
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is Node && other.x == x && other.y == y;
-  }
-
-  //Siehe Methode "bool operator"
-  @override
-  int get hashCode => Object.hash(x, y);
-}
-
-//The game tile
-class Hexagon {
-  //Hier wird x und y als Axial-Punkt übergeben. Center ist aber eine karthesische Koordiante
-  //deswegen wird umgerechnet
-  Hexagon({required this.type, required int x, required int y})
-    : axial = (x: x, y: y),
-      center = (
-        x: x + (y.isEven ? 0.0 : 0.5), // x-Offset: Die Hexagons zweier Reihen sind immer um genau 0.5 verschoben
-        y: 0.5 + y * 0.75, //y- Offsett: Hexagon center an der y-Achse ist wie folgt: 0.5, 1.25, 2.0, 2.75, 3.5
-      );
-
-  final ({int x, int y}) axial;
-  ResourceType type;
-  int numberDisc = 0; //jedes Hexagon hat ja einen Wert fürs Würfeln zum Ressourcen vergeben
-  final Point2D center; //cartesian coordinates
-
-  //Das sind die jeweiligen Ecken des Hexagons mit den entsprechenden Koords
-  ({double x, double y}) get top => (x: center.x + 0.0, y: center.y - 0.5);
-  ({double x, double y}) get topRight => (x: center.x + 0.5, y: center.y - 0.25);
-  ({double x, double y}) get bottomRight => (x: center.x + 0.5, y: center.y + 0.25);
-  ({double x, double y}) get bottom => (x: center.x + 0.0, y: center.y + 0.5);
-  ({double x, double y}) get bottomLeft => (x: center.x - 0.5, y: center.y + 0.25);
-  ({double x, double y}) get topLeft => (x: center.x - 0.5, y: center.y - 0.25);
-
-  // Gibt eine Liste mit allen Ecken des Hexagons zurück
-  List<Point2D> get corners => [
-    top,
-    topRight,
-    bottomRight,
-    bottom,
-    bottomLeft,
-    topLeft,
-  ];
-
-  //Diese Funktion wandelt dann die karthesischen Koordinaten zurück in Axial-Koords
-  //Damit kann man das Hexagon wieder eindeutig im HexagonBoard finden
-  static ({int x, int y}) cartesianToAxial(double x, double y) {
-    int axialY = ((y - 0.5) * 4 / 3).toInt();
-    int axialX = (axialY.isEven ? x : x - 0.5).toInt();
-    return (x: axialX, y: axialY);
-  }
-
-  @override
-  String toString() {
-    return type.name;
-  }
-}

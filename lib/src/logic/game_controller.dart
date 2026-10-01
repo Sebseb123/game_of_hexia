@@ -1,6 +1,7 @@
 import 'package:game_of_hexia/src/logic/dice.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/building_type.dart';
+import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 
 
