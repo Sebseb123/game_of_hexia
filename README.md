@@ -87,9 +87,30 @@ Die vorhandenen Tests prüfen unter anderem:
 
 - später BuildSuccess enum implementieren als Rückgabewert
   für die Baumethoden, für die GUI
+- Straßenprüfung bei Siedlungsbau
+- Räuber 
+- längste Straße
 - wahrscheinlich sinnvoll, noch eine SpielerID einzuführen
 - Straßenverbindung bei der Platzierung von Siedlungen prüfen
 - Regeln für die Platzierung in der Anfangsphase ergänzen
 - Platzierungs- und Upgrade-Methoden nach den neuen Regeln testen
 - Aktiven Spieler und Zugwechsel über einen vollständigen Zugablauf testen
 - Benutzeroberfläche für Board und Spielaktionen entwickeln
+- Weitere Siedler-Mechaniken:
+- Räuber bei gewürfelter 7
+- Hälfte der Handkarten abwerfen bei mehr als 7 Ressourcen
+- Ressourcen von Mitspielern stehlen
+- Seehäfen mit 3:1- und 2:1-Tausch
+- Handel mit Bank und Mitspielern
+- Entwicklungskarten
+- Ritterkarten und „Größte Rittermacht“
+- „Längste Handelsstraße“
+- Siegpunktkarten
+- Straßenbau-, Monopol- und Erfindungskarten
+- Siegpunkte für Siedlungen und Städte
+- Spielende bei 10 Siegpunkten
+- Anfangsphase mit zwei kostenlosen Siedlungen und Straßen
+- Zweite Anfangssiedlung verteilt Startressourcen
+- Begrenzter Vorrat an Gebäuden und Straßen
+- Ressourcenbank und Kartenknappheit
+- Regel für eine 7: Bei 8 oder mehr Karten die Hälfte abgeben
