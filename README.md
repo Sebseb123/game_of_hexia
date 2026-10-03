@@ -85,9 +85,9 @@ Die vorhandenen Tests prüfen unter anderem:
 
 ## Nächste Schritte
 
-- Straßen mit Besitzer und Platzierungsregeln implementieren
-- Baukosten für Straßen, Siedlungen und Städte festlegen
-- Ressourcen beim Bauen prüfen und vom Spieler abziehen
+- später BuildSuccess enum implementieren als Rückgabewert
+  für die Baumethoden, für die GUI
+- wahrscheinlich sinnvoll, noch eine SpielerID einzuführen
 - Straßenverbindung bei der Platzierung von Siedlungen prüfen
 - Regeln für die Platzierung in der Anfangsphase ergänzen
 - Platzierungs- und Upgrade-Methoden nach den neuen Regeln testen

@@ -1,9 +1,11 @@
 import 'package:game_of_hexia/src/models/node.dart';
+import 'package:game_of_hexia/src/models/player.dart';
 
 
 class Edge {
   Node n;
   Node m;
+  PlayerColor? roadOwner;
 
   Edge(this.n, this.m) {
     if ( n == m )  throw ArgumentError('An edge needs two different nodes');

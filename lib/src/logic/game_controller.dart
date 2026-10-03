@@ -3,6 +3,7 @@ import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/building_type.dart';
 import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/node.dart';
+import 'package:game_of_hexia/src/models/edge.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 
 
@@ -78,37 +79,56 @@ class GameController {
   // setzt/baut eine Siedlung auf einen node. Falls erfolgreich: true, sonst false
   bool placeSettlement(Node node){
 
-    // node existiert nicht oder ist belegt
-    if (node.owner != null || node.building != null) {return false;}
-
-    // Abstände zur nächsten Siedlung/Stadt prüfen
+    // Abstände zur nächsten Siedlung/Stadt prüfen, usw.
     if (possibleToPlaceSettlement(node) == false) return false;
+
     final activePlayer = getActivePlayer();
 
-    // TODO: Ressourcen des Spielers der bauen will prüfen,
-    //  TODO: Existenz von Straßen des Spielers prüfen
+    if(activePlayer.remainingSettlements <= 0) return false;
+
+    if (!tryPayForSettlement(activePlayer)) {
+      // print('Not enough resources to build a settlement.');
+      return false;
+    }
 
     node.owner = activePlayer.color;
     node.building = BuildingType.settlement;
+    activePlayer.remainingSettlements--;
     return true;
   }
 
    // baut eine Stadt auf einen Knoten, auf dem schon eine Siedlung des sleben
   // Spielers gesetzt sein muss
   bool upgradeSettlementToCity(Node node) {
-
-    // node existiert nicht oder ist keine Siedlung
-    if (node.building != BuildingType.settlement) {
-      return false;}
-    if (possibleToPlaceCity(node) == false) return false;
+    if (!possibleToPlaceCity(node)) return false;
 
     final activePlayer = getActivePlayer();
-    // Besitzer des Knotens ist anderer Spieler
-    if (node.owner != activePlayer.color) return false;
-    // TODO: Ressource, Straßen
-    node.building = BuildingType.city;
-    return true;
 
+    if (activePlayer.remainingCities <= 0) return false;
+    if (!tryPayForCity(activePlayer)) return false;
+
+    node.building = BuildingType.city;
+    activePlayer.remainingCities--;
+    activePlayer.remainingSettlements++;
+    return true;
+  }
+
+  // Baut eine Straße auf einer freien, mit dem Spieler verbundenen Kante.
+  // Falls erfolgreich: true, sonst false.
+  bool placeRoad(Edge edge) {
+    // Kante und Verbindung zum eigenen Straßennetz oder Gebäude prüfen.
+    if (!possibleToPlaceRoad(edge)) return false;
+
+    final activePlayer = getActivePlayer();
+
+    // Verfügbare Straßen und Ressourcen prüfen.
+    if (activePlayer.remainingRoads <= 0) return false;
+    if (!tryPayForRoad(activePlayer)) return false;
+
+    // Straße platzieren und den Vorrat des Spielers reduzieren.
+    edge.roadOwner = activePlayer.color;
+    activePlayer.remainingRoads--;
+    return true;
   }
 
 
@@ -139,6 +159,66 @@ class GameController {
 
   }
 
+  // Prüft, ob es möglich ist, eine Straße zwischen zwei Knoten zu bauen
+  bool possibleToPlaceRoad(Edge edge) {
+    final activePlayer = getActivePlayer();
+
+    if (!gameBoard.allEdges.contains(edge) || edge.roadOwner != null) {
+      return false;
+    }
+
+    for (final node in [edge.n, edge.m]) {
+      final hasOpponentBuilding =
+          node.building != null && node.owner != activePlayer.color;
+      if (hasOpponentBuilding) continue;
+
+      final hasOwnBuilding =
+          node.building != null && node.owner == activePlayer.color;
+      if (hasOwnBuilding) return true;
+
+      final connectsToOwnRoad = gameBoard.allEdges.any(
+        (otherEdge) =>
+            otherEdge.roadOwner == activePlayer.color &&
+            (otherEdge.n == node || otherEdge.m == node),
+      );
+      if (connectsToOwnRoad) return true;
+    }
+
+    return false;
+  }
+
+  // Ressourcen abziehen, wenn Spieler Siedlung baut
+   bool tryPayForSettlement(Player activePlayer) {
+    if (activePlayer.woods >= 1 && activePlayer.stone >= 1 &&
+    activePlayer.fishes >= 1 && activePlayer.cattle >= 1) {
+      activePlayer.woods -= 1;
+      activePlayer.fishes -= 1;
+      activePlayer.cattle -= 1;
+      activePlayer.stone -= 1;
+      return true;
+    }
+    return false;
+   }
+
+   // Ressourcen abziehen, wenn Spieler eine Stadt baut
+   bool tryPayForCity(Player activePlayer) {
+     if (activePlayer.iron >= 3 && activePlayer.fishes >= 2) {
+       activePlayer.iron -= 3;
+       activePlayer.fishes -= 2;
+       return true;
+     }
+     return false;
+   }
+
+   // Ressourcen abziehen, wenn Spieler eine Straße baut
+   bool tryPayForRoad(Player activePlayer) {
+     if (activePlayer.woods >= 1 && activePlayer.stone >= 1) {
+       activePlayer.woods -= 1;
+       activePlayer.stone -= 1;
+       return true;
+     }
+     return false;
+   }
 
 
   }

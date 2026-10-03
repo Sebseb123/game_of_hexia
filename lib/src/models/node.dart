@@ -16,12 +16,13 @@ import 'package:game_of_hexia/src/models/player.dart';
 //            (2, 0.5)
 // A node can be owned by a player and a building (settlement or city) can be placed on a node
 class Node {
-  Node({required this.x, required this.y});
+
   final double x;
   final double y;
   PlayerColor? owner;
   BuildingType? building;
 
+  Node({required this.x, required this.y});
 
   // Vergleichsoperator damit bei @initNodes() nicht die gleichen Nodes in das Set kommen
   // Set sind diese Methoden bekannt und nutzt sie automatisch

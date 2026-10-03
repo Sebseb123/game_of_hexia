@@ -9,6 +9,11 @@ class Player {
   final PlayerColor color;
   final String name;
 
+  // buildings
+  int remainingSettlements = 5;
+  int remainingCities = 4;
+  int remainingRoads = 15;
+
   // resources
   int woods = 0;
   int fishes = 0;
