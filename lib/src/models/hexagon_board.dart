@@ -1,6 +1,7 @@
 import 'package:game_of_hexia/src/models/resource_type.dart';
 import 'package:game_of_hexia/src/models/node.dart';
 import 'package:game_of_hexia/src/models/hexagon.dart';
+import 'package:game_of_hexia/src/models/edge.dart';
 
 
 
@@ -10,6 +11,7 @@ class HexagonBoard {
   final int radius;
   final Map<({int x, int y}), Hexagon> _grid = {};   // Der Schlüssel ist ein Axial Koordinatenpunkt
   final Map<Point2D, Node> _nodes = {};
+  final Set<Edge> allEdges = {};
 
   //Each tile/hexagon has 6 different directions/borders
   final tileDirections = [
@@ -24,23 +26,19 @@ class HexagonBoard {
       throw ArgumentError.value(radius, 'radius', 'must be at least 1');
     }
 
-    // Create the upper half, including the widest middle row.
-    int startX = radius;
-    for (int y = 0; y <= radius; y++) {
-      for (int x = startX; x < 2 * radius + 1; x++) {
+    final boardCenterX = radius + (radius.isOdd ? 0.5 : 0.0);
+    for (int y = 0; y < 2 * radius + 1; y++) {
+      final rowLength = 2 * radius + 1 - (y - radius).abs();
+      final rowOffset = y.isEven ? 0.0 : 0.5;
+      final startX =
+          (boardCenterX - (rowLength - 1) / 2 - rowOffset).round();
+
+      for (int x = startX; x < startX + rowLength; x++) {
         _grid[(x: x, y: y)] = Hexagon(type: ResourceType.empty, x: x, y: y);
       }
-      startX--;
-    }
-    // Create the lower half, with one fewer field in each row.
-    int endX = radius * 2;
-    for (int y = radius + 1; y < 2 * radius + 1; y++) {
-      for (int x = 0; x < endX; x++) {
-        _grid[(x: x, y: y)] = Hexagon(type: ResourceType.empty, x: x, y: y);
-      }
-      endX--;
     }
     initNodes();
+    initEdges();
   }
 
   //Use this to place hexagons randomly on board
@@ -188,6 +186,39 @@ class HexagonBoard {
     return _nodes.values.toSet();
   }
 
+
+  // füllt die Liste, also das Klassenattribut allEdges mit allen Kanten des boards
+  Set<Edge> initEdges() {
+
+    _grid.forEach((key, hexagon){
+
+      for (int i = 0; i < hexagon.corners.length; i++){
+        Node? n = _nodes[hexagon.corners[i]];
+        Node? m = _nodes[hexagon.corners[(i + 1) % 6]];
+
+        Edge e = Edge(n!, m!);
+        allEdges.add(e);
+      }
+
+      });
+       return allEdges;
+    }
+
+  // Gibt die 0- max 3 benachbarten Nodes eines Nodes zurück
+  Set<Node> getAdjacentNodesToNode(Node n) {
+    Set<Node> adjacentNodes = {};
+
+    allEdges.forEach((edge){
+
+          if (n == edge.n) {
+            adjacentNodes.add(edge.m);
+          } if (n == edge.m) {
+            adjacentNodes.add(edge.n);
+          }
+      });
+      return adjacentNodes;
+  }
+
   //Für eine gegebene Ecke werden die angrenzenden Hexagons zurückgegeben
   Set<Hexagon> getAdjacentHexagonsToNode(Node node) {
     Set<Hexagon> adjacentHexagons = {};
@@ -249,7 +280,6 @@ class HexagonBoard {
     return buffer.toString().trimRight();
   }
 }
-
 
 
 

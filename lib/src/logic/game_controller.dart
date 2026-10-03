@@ -2,6 +2,7 @@ import 'package:game_of_hexia/src/logic/dice.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/building_type.dart';
 import 'package:game_of_hexia/src/models/hexagon.dart';
+import 'package:game_of_hexia/src/models/node.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 
 
@@ -68,10 +69,76 @@ class GameController {
     return players[activePlayerIndex];
   }
 
-  // setzt aktiven Spieler für die nächste Runde
+  // setzt aktiven Spieler für die nächste Runde, wird später bei
+  // am Ende jeder Runde aufgerufen
   void endTurn() {
     activePlayerIndex = (activePlayerIndex + 1) % players.length;
   }
 
+  // setzt/baut eine Siedlung auf einen node. Falls erfolgreich: true, sonst false
+  bool placeSettlement(Node node){
 
-}
+    // node existiert nicht oder ist belegt
+    if (node.owner != null || node.building != null) {return false;}
+
+    // Abstände zur nächsten Siedlung/Stadt prüfen
+    if (possibleToPlaceSettlement(node) == false) return false;
+    final activePlayer = getActivePlayer();
+
+    // TODO: Ressourcen des Spielers der bauen will prüfen,
+    //  TODO: Existenz von Straßen des Spielers prüfen
+
+    node.owner = activePlayer.color;
+    node.building = BuildingType.settlement;
+    return true;
+  }
+
+   // baut eine Stadt auf einen Knoten, auf dem schon eine Siedlung des sleben
+  // Spielers gesetzt sein muss
+  bool upgradeSettlementToCity(Node node) {
+
+    // node existiert nicht oder ist keine Siedlung
+    if (node.building != BuildingType.settlement) {
+      return false;}
+    if (possibleToPlaceCity(node) == false) return false;
+
+    final activePlayer = getActivePlayer();
+    // Besitzer des Knotens ist anderer Spieler
+    if (node.owner != activePlayer.color) return false;
+    // TODO: Ressource, Straßen
+    node.building = BuildingType.city;
+    return true;
+
+  }
+
+
+  // Prüft Abstandsregeln zum Siedlung/Stadt bauen:
+  // beide dürfen nicht direkt neben einer anderen gebauet werden
+  bool possibleToPlaceSettlement(Node n ) {
+
+    if (n.owner != null || n.building != null) {return false;}
+
+    Set<Node> adjacentNodes = gameBoard.getAdjacentNodesToNode(n);
+    for (final node in adjacentNodes) {
+      if (node.owner != null || node.building != null) return false;
+    }
+     return true;
+  }
+
+  // Prüft, ob ein Knoten geeignet dafür ist, eine Stadt zu bauen
+  // Prüfung ist nur ein Teil, Ressourcen und Straßen werden in
+  // anderen Methoden geprüft
+  bool possibleToPlaceCity(Node n){
+
+    Player activePlayer = getActivePlayer();
+    Set<Node> adjacentNodes = gameBoard.getAdjacentNodesToNode(n);
+    for (final node in adjacentNodes) {
+      if (node.owner != null || node.building != null) return false;
+    }
+    return n.owner == activePlayer.color && n.building == BuildingType.settlement;
+
+  }
+
+
+
+  }

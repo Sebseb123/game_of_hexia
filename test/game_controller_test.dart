@@ -59,4 +59,54 @@ void main() {
 
     expect(player.iron, 2);
   });
+  test('checks the possibleToPlaceSettlement method', () {
+    final board = HexagonBoard(radius: 2);
+    final player = Player(color: PlayerColor.blue, name: 'Blue');
+    final controller = GameController(
+      gameBoard: board,
+      dice: Dices(),
+      players: [player],
+    );
+    final corner = board.getHexagon(2, 0)!.bottomRight;
+    final node = board.getNode(corner.x, corner.y)!;
+
+    expect(controller.possibleToPlaceSettlement(node), isTrue);
+
+    node.owner = PlayerColor.blue;
+    node.building = BuildingType.settlement;
+    expect(controller.possibleToPlaceSettlement(node), isFalse);
+
+    node.owner = null;
+    node.building = null;
+    final neighbor = board.getAdjacentNodesToNode(node).first;
+    neighbor.owner = PlayerColor.red;
+    neighbor.building = BuildingType.settlement;
+    expect(controller.possibleToPlaceSettlement(node), isFalse);
+  });
+
+  test('checks the possibleToPlaceCity method', () {
+    final board = HexagonBoard(radius: 2);
+    final player = Player(color: PlayerColor.blue, name: 'Blue');
+    final controller = GameController(
+      gameBoard: board,
+      dice: Dices(),
+      players: [player],
+    );
+    final corner = board.getHexagon(2, 0)!.bottomRight;
+    final node = board.getNode(corner.x, corner.y)!;
+
+    node.owner = PlayerColor.blue;
+    node.building = BuildingType.settlement;
+    expect(controller.possibleToPlaceCity(node), isTrue);
+
+    node.owner = PlayerColor.red;
+    expect(controller.possibleToPlaceCity(node), isFalse);
+
+    node.owner = PlayerColor.blue;
+    final neighbor = board.getAdjacentNodesToNode(node).first;
+    neighbor.owner = PlayerColor.red;
+    neighbor.building = BuildingType.settlement;
+    expect(controller.possibleToPlaceCity(node), isFalse);
+
+  });
 }

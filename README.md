@@ -1,56 +1,95 @@
-# game_of_hexia
+# Game of Hexia
 
-Im bin Folder ist eine Datei zum Testen des Boards. Kann man über die Konsole mit
-dart run bin/test_game.dart starten
+Game of Hexia ist ein in Dart und Flutter entwickeltes, von Siedler inspiriertes
+Spiel. Aktuell liegt der Schwerpunkt auf dem Spielfeld und der Spiellogik. Eine
+vollständige Benutzeroberfläche ist noch nicht umgesetzt.
 
-Unter lib/src findet sich der Rest.
-Habe am HexagonBoard weiter gearbeitet.
-Jetzt kann man die Größe des Spielfelds frei wählen.
-Größe wird beim Start des Konsolenprogramms abgefragt.
-Die Verhältnisse der Ressourcen auf den Feldern bleibt ungefähr
-so, wie es für 19 Felder implementiert war.
-Alle 19 Felder kommt eine Wüste hinzu, das könnte man vll noch variieren.
+## Aktueller Stand
 
-Habe außerdem mit den Klassen Würfel, Spieler und
-GameController begonnen.
+- Hexagonales Spielfeld mit frei wählbarem Radius
+- Strukturierung der Klassen
+- Korrekte Anordnung der Reihen zu einem geschlossenen Board
+- Modellierung von Kanten
+- Zufällige Verteilung der Ressourcenfelder
+- Platzierung der Zahlenchips
+- Eindeutige Knoten (`Node`) an den Hexagon-Ecken
+- Eindeutige Kanten (`Edge`) zwischen benachbarten Knoten
+- Ermittlung benachbarter Knoten und Hexagons
+- Spieler und Spielerwechsel
+- Würfeln und Verteilen von Ressourcen an Siedlungen und Städte
+- Prüfung der grundlegenden Bedingungen für Siedlungen und Städte
 
-Die größte neue Hauptfunktion ist das Würfeln und die Ressourcenverteilung
-durch das Würfeln.
+Ein Standard-Board mit Radius 2 besteht aus:
 
-Die Enums building_type für Stadt/Siedlung und resource_type (vorher Hexagon_type)
-habe ich als eigene Klassen geschrieben, damit versch. Klassen drauf zugreifen können.
+- 19 Hexagons
+- 54 Knoten
+- 72 Kanten
 
-Ein Node hat jetzt außerdem ggf. einen Besitzer (owner) und ein
-Gebäude(buildingType), beide Attirbute können aber auch null sein.
+## Projektstruktur
 
-Tests und Kommentare sind fast in Gänze von Opencode erstellt.
-
+```text
 lib/
 └── src/
-    ├── exceptions/
-    │   ├── 
-    │   └── 
-    │
     ├── logic/
-    │   ├── game_controller.dart
-    │   └── dice.dart
-    │
-    ├── models/
-    │   ├── hexagon_board.dart
-    │   ├── building_type.dart
-    │   ├── player.dart
-    │   ├── resource_type.dart
+    │   ├── dice.dart
+    │   └── game_controller.dart
+    └── models/
+        ├── building_type.dart
+        ├── edge.dart
+        ├── hexagon.dart
+        ├── hexagon_board.dart
+        ├── node.dart
+        ├── player.dart
+        └── resource_type.dart
 
-    │
-    └── views/
-        ├── 
+test/
+├── game_controller_test.dart
+└── hexagon_board_test.dart
+```
 
+## Ausführen
 
-Nächste Schritte könnten sein:
+Abhängigkeiten installieren:
 
-- die Klassen noch etwas strukturieren,
-  (z.B. eig. Node Klasse, Hexagon Klasse usw.)
-- Siedlungen über eine Spielaktion auf Nodes platzieren
-- Aktiven Spieler und Zugwechsel in der Konsole testen
-- Straßen und Kanten modellieren
-- Kosten für Gebäude und Ressourcenverbrauch ergänzen
+```bash
+flutter pub get
+```
+
+Die Konsolenausgabe des Boards starten:
+
+```bash
+dart run bin/test_game.dart
+```
+
+Alle Tests ausführen:
+
+```bash
+flutter test
+```
+
+Statische Codeanalyse ausführen:
+
+```bash
+dart analyze
+```
+
+## Tests
+
+Die vorhandenen Tests prüfen unter anderem:
+
+- Anzahl der Hexagons, Knoten und Kanten
+- Gleichheit richtungsunabhängiger Kanten
+- Benachbarte Knoten und Hexagons
+- Würfelergebnisse und Ressourcenverteilung
+- Grundregeln für die Platzierung von Siedlungen und Städten
+
+## Nächste Schritte
+
+- Straßen mit Besitzer und Platzierungsregeln implementieren
+- Baukosten für Straßen, Siedlungen und Städte festlegen
+- Ressourcen beim Bauen prüfen und vom Spieler abziehen
+- Straßenverbindung bei der Platzierung von Siedlungen prüfen
+- Regeln für die Platzierung in der Anfangsphase ergänzen
+- Platzierungs- und Upgrade-Methoden nach den neuen Regeln testen
+- Aktiven Spieler und Zugwechsel über einen vollständigen Zugablauf testen
+- Benutzeroberfläche für Board und Spielaktionen entwickeln
