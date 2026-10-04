@@ -113,6 +113,8 @@ Die vorhandenen Tests prüfen unter anderem:
 - Seehäfen mit 3:1- und 2:1-Tausch
 - Handel mit Bank und Mitspielern
 - Entwicklungskarten
+- Neu gekaufte Entwicklungskarten zu Beginn des nächsten eigenen Zugs
+  spielbar machen
 - Ritterkarten und „Größte Rittermacht“
 - „Längste Handelsstraße“
 - Siegpunktkarten

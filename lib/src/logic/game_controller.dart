@@ -6,6 +6,8 @@ import 'package:game_of_hexia/src/models/node.dart';
 import 'package:game_of_hexia/src/models/edge.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
+import 'package:game_of_hexia/src/models/development_card_deck.dart';
+
 
 /// Coordinates game actions between the board, dice and players.
 class GameController {
@@ -13,6 +15,7 @@ class GameController {
   final Dices dice;
   final List<Player> players;
   int activePlayerIndex = 0;
+  final DevelopmentCardDeck developmentCardDeck = DevelopmentCardDeck();
 
   GameController({
     required this.gameBoard,
@@ -38,6 +41,29 @@ class GameController {
     distributeResources(total);
     return total;
   }
+
+   /// Methode, die den Kauf einer Entwicklungskarte abwickelt
+
+  bool developmentCardPurchase(Player player){
+
+    if (player != getActivePlayer()) return false;
+    if(!player.canBuyDevelopmentCard()) return false;
+    if(developmentCardDeck.cardDeck.isEmpty) return false;
+
+    player.iron --;
+    player.fishes--;
+    player.cattle--;
+
+    final card = developmentCardDeck.cardDeck.removeLast();
+
+    player.developmentCards.add((card, false));
+    return true;
+  }
+
+
+
+
+
 
   /// Steals one card of the resources from [victim] and gives it to the
   /// active player. Returns the stolen resource, or null if the victim has

@@ -1,4 +1,5 @@
 import 'package:game_of_hexia/src/models/building_type.dart';
+import 'package:game_of_hexia/src/models/development_card_type.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
 
 enum PlayerColor { blue, red, yellow, green, black, white }
@@ -7,6 +8,7 @@ enum PlayerColor { blue, red, yellow, green, black, white }
 class Player {
   final PlayerColor color;
   final String name;
+  final List<(DevelopmentCardType, bool)> developmentCards = [];
 
   // buildings
   int remainingSettlements = 5;
@@ -92,4 +94,13 @@ class Player {
     }
     return true;
   }
+
+
+  /// kleine Prüfmethode, ob eine Entwicklungskarte gekauft werden kann
+   bool canBuyDevelopmentCard() {
+        if(cattle > 0 && fishes > 0 && iron > 0) return true;
+        return false;
+   }
+
+
 }

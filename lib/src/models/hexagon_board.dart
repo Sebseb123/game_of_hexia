@@ -4,12 +4,12 @@ import 'package:game_of_hexia/src/models/robber.dart';
 import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/edge.dart';
 
+
 ///Das HexagonBoard besteht aus Hexagons. Hexagons sind einmal über einen Index bzw AxialKoord. adressierbar (der key in _grid),
 ///besitzen aber auch eine karthesische Koordinate (center). Jedes Hexagon hat 6 Ecken, die wiederum auch über eine karthesische Koordinate verfügen
 class HexagonBoard {
   final int radius;
-  final Map<({int x, int y}), Hexagon> _grid =
-      {}; // Der Schlüssel ist ein Axial Koordinatenpunkt
+  final Map<({int x, int y}), Hexagon> _grid = {}; // Der Schlüssel ist ein Axial Koordinatenpunkt
   final Map<Point2D, Node> _nodes = {};
   final Set<Edge> allEdges = {};
   Robber? robber;
