@@ -3,7 +3,7 @@ import 'package:game_of_hexia/src/logic/game_controller.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/node.dart';
-
+import 'package:game_of_hexia/src/models/resource_type.dart';
 
 import 'dart:io';
 
@@ -16,6 +16,7 @@ void main() {
   }
 
   final players = <Player>[];
+
   while (players.length < playerCount) {
     final playerNumber = players.length + 1;
     stdout.write('Name von Spieler $playerNumber: ');
@@ -68,5 +69,78 @@ void main() {
   int rolled = gameController.rollDice();
   print(rolled);
   print(gameController.getRolledHexagons(rolled));
+}
 
+/// Durchläuft alle Spieler mit mehr als 7 Karten, ruft readResourcesFromConsole auf
+/// und übergibt sie dem Controller
+void handleRobberDiscard(GameController gc) {
+  for (final player in gc.players) {
+
+    int amountToDiscard = gc.calculateCardsToThrowAway(player);
+    if (amountToDiscard > 0) {
+      while (true) {
+        final selectedResources = readResourcesFromConsole(
+          player,
+          amountToDiscard,
+        );
+        if (gc.discardResourcesForRobber(player, selectedResources)) {
+          break;
+        }
+        print('Der Spieler besitzt die ausgewählten Ressourcen nicht.');
+      }
+    }
+  }
+}
+
+/// Liest die Auswahl der Ressourcen, die ein Spieler abwerfen möchte, wenn
+/// der Räuber gewürfelt wurde und der Spieler mehr als 7 Karten besitzt
+/// Vorübergehend als I/O, später über GUI
+Map<ResourceType, int> readResourcesFromConsole(Player player, int amount) {
+  if (amount <= 0) {
+    return {};
+  }
+
+  final resourceTypes = ResourceType.values.where(
+    (resource) => resource != ResourceType.empty,
+  );
+
+  while (true) {
+    print('${player.name} muss genau $amount Ressourcen abwerfen.');
+    final selectedResources = <ResourceType, int>{};
+
+    for (final resource in resourceTypes) {
+      int? selectedAmount;
+
+      while (selectedAmount == null) {
+        stdout.write('${resource.name}: ');
+        final input = stdin.readLineSync();
+        final parsedAmount = int.tryParse(input?.trim() ?? '');
+
+        if (parsedAmount == null || parsedAmount < 0) {
+          print('Bitte eine nichtnegative ganze Zahl eingeben.');
+          continue;
+        }
+
+        selectedAmount = parsedAmount;
+      }
+
+      if (selectedAmount > 0) {
+        selectedResources[resource] = selectedAmount;
+      }
+    }
+
+    final selectedCount = selectedResources.values.fold(
+      0,
+      (sum, resourceAmount) => sum + resourceAmount,
+    );
+
+    if (selectedCount == amount) {
+      return selectedResources;
+    }
+
+    print(
+      'Es wurden $selectedCount Ressourcen ausgewaehlt. '
+      'Erforderlich sind genau $amount.',
+    );
+  }
 }

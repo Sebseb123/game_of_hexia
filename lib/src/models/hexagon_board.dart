@@ -1,5 +1,6 @@
 import 'package:game_of_hexia/src/models/resource_type.dart';
 import 'package:game_of_hexia/src/models/node.dart';
+import 'package:game_of_hexia/src/models/robber.dart';
 import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/edge.dart';
 
@@ -12,6 +13,7 @@ class HexagonBoard {
   final Map<({int x, int y}), Hexagon> _grid = {};   // Der Schlüssel ist ein Axial Koordinatenpunkt
   final Map<Point2D, Node> _nodes = {};
   final Set<Edge> allEdges = {};
+  Robber? robber;
 
   //Each tile/hexagon has 6 different directions/borders
   final tileDirections = [
@@ -85,6 +87,12 @@ class HexagonBoard {
     for (final hexagon in _grid.values) {
       hexagon.type = tileTypes[index];
       index++;
+    }
+    for (final hex in _grid.values) {
+      if (hex.type == ResourceType.empty) {
+           robber = Robber(hex);
+           break;
+      }
     }
   }
 

@@ -18,6 +18,8 @@ vollständige Benutzeroberfläche ist noch nicht umgesetzt.
 - Spieler und Spielerwechsel
 - Würfeln und Verteilen von Ressourcen an Siedlungen und Städte
 - Prüfung der grundlegenden Bedingungen für Siedlungen und Städte
+- Startposition des Räubers auf einem Wüstenfeld
+- Berechnung, Konsolenauswahl und validiertes Abwerfen von Ressourcen bei einer 7
 
 Ein Standard-Board mit Radius 2 besteht aus:
 
@@ -28,6 +30,9 @@ Ein Standard-Board mit Radius 2 besteht aus:
 ## Projektstruktur
 
 ```text
+bin/
+└── test_game.dart
+
 lib/
 └── src/
     ├── logic/
@@ -40,6 +45,7 @@ lib/
         ├── hexagon_board.dart
         ├── node.dart
         ├── player.dart
+        ├── robber.dart
         └── resource_type.dart
 
 test/
@@ -81,6 +87,7 @@ Die vorhandenen Tests prüfen unter anderem:
 - Gleichheit richtungsunabhängiger Kanten
 - Benachbarte Knoten und Hexagons
 - Würfelergebnisse und Ressourcenverteilung
+- Berechnung und validiertes Abwerfen von Ressourcen bei einer 7
 - Grundregeln für die Platzierung von Siedlungen und Städten
 
 ## Nächste Schritte
@@ -88,7 +95,10 @@ Die vorhandenen Tests prüfen unter anderem:
 - später BuildSuccess enum implementieren als Rückgabewert
   für die Baumethoden, für die GUI
 - Straßenprüfung bei Siedlungsbau
-- Räuber 
+- Räuberablauf nach einer gewürfelten 7 in den Spielablauf einbinden
+- Räuber auf ein anderes Hexagon versetzen
+- Ressourcenproduktion auf dem Räuberfeld blockieren
+- Angrenzenden Mitspieler auswählen und eine zufällige Ressource stehlen
 - längste Straße
 - wahrscheinlich sinnvoll, noch eine SpielerID einzuführen
 - Straßenverbindung bei der Platzierung von Siedlungen prüfen
@@ -96,10 +106,8 @@ Die vorhandenen Tests prüfen unter anderem:
 - Platzierungs- und Upgrade-Methoden nach den neuen Regeln testen
 - Aktiven Spieler und Zugwechsel über einen vollständigen Zugablauf testen
 - Benutzeroberfläche für Board und Spielaktionen entwickeln
+
 - Weitere Siedler-Mechaniken:
-- Räuber bei gewürfelter 7
-- Hälfte der Handkarten abwerfen bei mehr als 7 Ressourcen
-- Ressourcen von Mitspielern stehlen
 - Seehäfen mit 3:1- und 2:1-Tausch
 - Handel mit Bank und Mitspielern
 - Entwicklungskarten
@@ -113,4 +121,3 @@ Die vorhandenen Tests prüfen unter anderem:
 - Zweite Anfangssiedlung verteilt Startressourcen
 - Begrenzter Vorrat an Gebäuden und Straßen
 - Ressourcenbank und Kartenknappheit
-- Regel für eine 7: Bei 8 oder mehr Karten die Hälfte abgeben

@@ -59,6 +59,50 @@ void main() {
 
     expect(player.iron, 2);
   });
+
+  test('discards the selected resource amounts for the robber', () {
+    final player = Player(color: PlayerColor.blue, name: 'Blue');
+    final controller = GameController(
+      gameBoard: HexagonBoard(radius: 1),
+      dice: Dices(),
+      players: [player],
+    );
+    player.woods = 4;
+    player.fishes = 4;
+
+    final discarded = controller.discardResourcesForRobber(player, {
+      ResourceType.wood: 2,
+      ResourceType.fish: 2,
+    });
+
+    expect(discarded, isTrue);
+    expect(player.woods, 2);
+    expect(player.fishes, 2);
+  });
+
+  test(
+    'rejects invalid robber resource amounts without changing the player',
+    () {
+      final player = Player(color: PlayerColor.blue, name: 'Blue');
+      final controller = GameController(
+        gameBoard: HexagonBoard(radius: 1),
+        dice: Dices(),
+        players: [player],
+      );
+      player.woods = 4;
+      player.fishes = 4;
+
+      final discarded = controller.discardResourcesForRobber(player, {
+        ResourceType.wood: 5,
+        ResourceType.fish: -1,
+      });
+
+      expect(discarded, isFalse);
+      expect(player.woods, 4);
+      expect(player.fishes, 4);
+    },
+  );
+
   test('checks the possibleToPlaceSettlement method', () {
     final board = HexagonBoard(radius: 2);
     final player = Player(color: PlayerColor.blue, name: 'Blue');
@@ -107,7 +151,6 @@ void main() {
     neighbor.owner = PlayerColor.red;
     neighbor.building = BuildingType.settlement;
     expect(controller.possibleToPlaceCity(node), isFalse);
-
   });
 
   test('checks the possibleToPlaceRoad method', () {
@@ -130,8 +173,7 @@ void main() {
     edge.n.building = null;
     final connectedEdge = board.allEdges.firstWhere(
       (otherEdge) =>
-          otherEdge != edge &&
-          (otherEdge.n == edge.n || otherEdge.m == edge.n),
+          otherEdge != edge && (otherEdge.n == edge.n || otherEdge.m == edge.n),
     );
     connectedEdge.roadOwner = PlayerColor.blue;
     expect(controller.possibleToPlaceRoad(edge), isTrue);
