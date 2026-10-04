@@ -20,6 +20,10 @@ vollständige Benutzeroberfläche ist noch nicht umgesetzt.
 - Prüfung der grundlegenden Bedingungen für Siedlungen und Städte
 - Startposition des Räubers auf einem Wüstenfeld
 - Berechnung, Konsolenauswahl und validiertes Abwerfen von Ressourcen bei einer 7
+- Vollständiger Räuberzug: Abwerfen, Zielfeld wählen, Räuber versetzen, Opfer
+  wählen und eine zufällige Karte stehlen
+- Blockierte Ressourcenproduktion auf dem Feld des Räubers
+- Regel, dass der Räuber nicht auf das eigene Feld des aktiven Spielers gesetzt wird
 
 Ein Standard-Board mit Radius 2 besteht aus:
 
@@ -88,6 +92,8 @@ Die vorhandenen Tests prüfen unter anderem:
 - Benachbarte Knoten und Hexagons
 - Würfelergebnisse und Ressourcenverteilung
 - Berechnung und validiertes Abwerfen von Ressourcen bei einer 7
+- Stehlen einer zufälligen Karte, auch bei leerer Hand des Opfers
+- Blockierte Ressourcenproduktion auf dem Räuberfeld
 - Grundregeln für die Platzierung von Siedlungen und Städten
 
 ## Nächste Schritte
@@ -95,10 +101,6 @@ Die vorhandenen Tests prüfen unter anderem:
 - später BuildSuccess enum implementieren als Rückgabewert
   für die Baumethoden, für die GUI
 - Straßenprüfung bei Siedlungsbau
-- Räuberablauf nach einer gewürfelten 7 in den Spielablauf einbinden
-- Räuber auf ein anderes Hexagon versetzen
-- Ressourcenproduktion auf dem Räuberfeld blockieren
-- Angrenzenden Mitspieler auswählen und eine zufällige Ressource stehlen
 - längste Straße
 - wahrscheinlich sinnvoll, noch eine SpielerID einzuführen
 - Straßenverbindung bei der Platzierung von Siedlungen prüfen

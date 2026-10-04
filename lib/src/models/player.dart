@@ -5,7 +5,6 @@ enum PlayerColor { blue, red, yellow, green, black, white }
 
 /// Stores a player's identity and collected resources.
 class Player {
-
   final PlayerColor color;
   final String name;
 
@@ -24,10 +23,14 @@ class Player {
   Player({required this.color, required this.name});
 
   /// Adds resources and doubles the amount when the building is a city.
-  void addResource({required ResourceType resource, required int amount,
-    required BuildingType building}) {
-
-    final factor = building == BuildingType.settlement ? 1 : 2;
+  /// Ohne [building] wird genau die Menge hinzugefügt, zum Beispiel beim
+  /// Stehlen einer Karte.
+  void addResource({
+    required ResourceType resource,
+    int amount = 1,
+    BuildingType? building,
+  }) {
+    final factor = building == BuildingType.city ? 2 : 1;
 
     switch (resource) {
       case ResourceType.wood:
@@ -37,13 +40,56 @@ class Player {
       case ResourceType.iron:
         iron += amount * factor;
       case ResourceType.stone:
-       stone += amount * factor;
+        stone += amount * factor;
       case ResourceType.cattle:
-        cattle+= amount * factor;
+        cattle += amount * factor;
       case ResourceType.empty:
         return;
     }
   }
 
+  /// Returns the amount of each resource card in the players hand.
+  Map<ResourceType, int> getResourceCards() {
+    Map<ResourceType, int> resourceCards = {};
+    if (woods > 0) {
+      resourceCards[ResourceType.wood] = woods;
+    }
+    if (fishes > 0) {
+      resourceCards[ResourceType.fish] = fishes;
+    }
+    if (iron > 0) {
+      resourceCards[ResourceType.iron] = iron;
+    }
+    if (stone > 0) {
+      resourceCards[ResourceType.stone] = stone;
+    }
+    if (cattle > 0) {
+      resourceCards[ResourceType.cattle] = cattle;
+    }
+    return resourceCards;
+  }
 
+  /// Removes a given resource
+  bool removeResource(ResourceType resource) {
+    switch (resource) {
+      case ResourceType.wood:
+        if (woods == 0) return false;
+        woods--;
+      case ResourceType.fish:
+        if (fishes == 0) return false;
+        fishes--;
+      case ResourceType.iron:
+        if (iron == 0) return false;
+        iron--;
+      case ResourceType.stone:
+        if (stone == 0) return false;
+        stone--;
+      case ResourceType.cattle:
+        if (cattle == 0) return false;
+        cattle--;
+      case ResourceType.empty:
+        return false;
+    }
+    return true;
+  }
 }

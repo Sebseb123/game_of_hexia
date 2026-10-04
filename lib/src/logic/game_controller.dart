@@ -29,12 +29,66 @@ class GameController {
     dice2 = result.$2;
     final total = dice1 + dice2;
 
+    // Bei einer 7 wird hier nichts verteilt. Die Verteilung der 7-Felder
+    // übernimmt handleRobberTurn in test_game (gerade noch), wo
+    // die Räuber Mechanik zusammengefasst ist
     if (total == 7) {
       return total;
     }
-
     distributeResources(total);
     return total;
+  }
+
+  /// Steals one card of the resources from [victim] and gives it to the
+  /// active player. Returns the stolen resource, or null if the victim has
+  /// no cards left.
+  ResourceType? stealRandomResource(Player victim) {
+    final keys = victim.getResourceCards().keys.toList()..shuffle();
+
+    if (keys.isEmpty) return null;
+
+    final stolen = keys.first;
+    if (!victim.removeResource(stolen)) return null;
+
+    getActivePlayer().addResource(resource: stolen);
+    return stolen;
+  }
+
+  /// Gibt alle Gegner zurück, deren Siedlung oder Stadt an das Hexagon
+  /// [target] angrenzt. Der aktive Spieler selbst sowie Spieler ohne
+  /// Gebäude an diesem Feld werden nicht zurückgegeben.
+  List<Player> getPossibleVictimsForRobber(Hexagon target) {
+    final activePlayer = getActivePlayer();
+    final victimColors = <PlayerColor>{};
+
+    for (final corner in target.corners) {
+      final node = gameBoard.getNode(corner.x, corner.y);
+      if (node == null || node.building == null) continue;
+
+      final owner = node.owner;
+      if (owner == null || owner == activePlayer.color) continue;
+
+      victimColors.add(owner);
+    }
+
+    return players
+        .where((player) => victimColors.contains(player.color))
+        .toList();
+  }
+
+  /// Returns whether the active player has a settlement or city next to
+  /// [target]. The robber must not be placed on the active players own field.
+  bool isRobberBlockedForActivePlayer(Hexagon target) {
+    final activeColor = getActivePlayer().color;
+
+    for (final corner in target.corners) {
+      final node = gameBoard.getNode(corner.x, corner.y);
+      if (node == null || node.building == null) continue;
+
+      if (node.owner == activeColor) return true;
+    }
+
+    return false;
   }
 
   /// calculates the number of cards a player has to give away when the robber gets
@@ -42,6 +96,16 @@ class GameController {
   int calculateCardsToThrowAway(Player p) {
     int sum = p.stone + p.cattle + p.fishes + p.iron + p.woods;
     return sum > 7 ? sum ~/ 2 : 0;
+  }
+
+  /// Räuber umplatzieren
+  bool moveRobber(Hexagon target) {
+    /// Räuber MUSS Position ändern
+    final robber = gameBoard.robber;
+    if (robber == null) return false;
+    if (target == robber.currentPosition) return false;
+    robber.currentPosition = target;
+    return true;
   }
 
   /// zieht die Ressourcen vom Spieler ab, die er ausgwählt hatte.
@@ -96,6 +160,9 @@ class GameController {
     // Für jedes Hexagon prüfen, ob eine der Ecken ein Node ist, der im
     // Besitz eines Spielers ist
     for (final hex in rolledHexagons) {
+      // Felder mit Räuber liefern keine Ressourcen
+      if (gameBoard.robber?.currentPosition == hex) continue;
+
       List<Point2D> hexCorners = hex.corners;
 
       for (final corner in hexCorners) {

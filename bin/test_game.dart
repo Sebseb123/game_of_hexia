@@ -1,5 +1,6 @@
 import 'package:game_of_hexia/src/logic/dice.dart';
 import 'package:game_of_hexia/src/logic/game_controller.dart';
+import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/node.dart';
@@ -69,13 +70,13 @@ void main() {
   int rolled = gameController.rollDice();
   print(rolled);
   print(gameController.getRolledHexagons(rolled));
+  if (rolled == 7) handleRobberTurn(gameController, rolled);
 }
 
 /// Durchläuft alle Spieler mit mehr als 7 Karten, ruft readResourcesFromConsole auf
 /// und übergibt sie dem Controller
 void handleRobberDiscard(GameController gc) {
   for (final player in gc.players) {
-
     int amountToDiscard = gc.calculateCardsToThrowAway(player);
     if (amountToDiscard > 0) {
       while (true) {
@@ -143,4 +144,123 @@ Map<ResourceType, int> readResourcesFromConsole(Player player, int amount) {
       'Erforderlich sind genau $amount.',
     );
   }
+}
+
+/// Fragt ab, von welchem Gegner am Hexagon [target] eine Ressource
+/// gestohlen werden soll. Gibt null zurück, wenn niemand bestohlen
+/// werden kann.
+/// Vorübergehend als I/O, später über GUI
+Player? pickVictimFromConsole(GameController gc, Hexagon target) {
+  final victims = gc.getPossibleVictimsForRobber(target);
+
+  if (victims.isEmpty) {
+    print('Kein Gegner hat eine Siedlung an diesem Feld.');
+    return null;
+  }
+
+  while (true) {
+    print('Welchem Gegner möchtest Du eine Ressource stehlen?');
+
+    for (var i = 0; i < victims.length; i++) {
+      print('${i + 1}: ${victims[i].color.name} (${victims[i].name})');
+    }
+
+    stdout.write('Nummer des Gegners: ');
+    final choice = int.tryParse(stdin.readLineSync() ?? '');
+
+    if (choice == null || choice < 1 || choice > victims.length) {
+      print('Bitte eine gueltige Nummer eingeben.');
+      continue;
+    }
+
+    return victims[choice - 1];
+  }
+}
+
+/// Fragt ab, auf welches Feld der Räuber gesetzt werden soll. Das aktuelle
+/// Räuberfeld wird nicht angeboten, weil der Räuber die Position wechseln
+/// muss. Gibt null zurück, wenn der Spieler abbrechen will.
+/// Vorübergehend als I/O, später über GUI
+Hexagon? pickRobberTarget(GameController gc) {
+  final board = gc.gameBoard;
+  final currentPosition = board.robber?.currentPosition;
+  final fields = board
+      .getHexagons()
+      .where(
+        (hex) =>
+            hex != currentPosition && !gc.isRobberBlockedForActivePlayer(hex),
+      )
+      .toList();
+
+  while (true) {
+    print('Wohin soll der Räuber gestellt werden?');
+
+    for (var i = 0; i < fields.length; i++) {
+      final hex = fields[i];
+      final number = hex.numberDisc == 0 ? '' : ' (${hex.numberDisc})';
+      print('${i + 1}: ${hex.type.name}$number');
+    }
+
+    stdout.write('Nummer des Feldes: ');
+    final choice = int.tryParse(stdin.readLineSync() ?? '');
+
+    if (choice == null) {
+      print('Bitte eine Zahl eingeben.');
+      continue;
+    }
+
+    if (choice == 0) {
+      return null;
+    }
+
+    if (choice < 1 || choice > fields.length) {
+      print('Bitte eine gueltige Nummer eingeben.');
+      continue;
+    }
+
+    return fields[choice - 1];
+  }
+}
+
+/// Den ganzen Ablauf des Räubers in einer Methode zusammengefasst
+void handleRobberTurn(GameController gc, int diceValue) {
+  if (diceValue != 7) return;
+
+  gc.distributeResources(diceValue);
+  handleRobberDiscard(gc); // 7-Karten-Regel
+
+  // Der Räuber muss versetzt werden. Solange moveRobber scheitert, wird
+  // erneut gefragt, damit der Zug nicht unvollständig endet.
+  Hexagon? target;
+  while (true) {
+    final choice = pickRobberTarget(gc);
+
+    if (choice == null) {
+      print('Der Räuber bleibt liegen. Der Spieler hat ihn nicht versetzt.');
+      return;
+    }
+
+    if (gc.moveRobber(choice)) {
+      target = choice;
+      break;
+    }
+
+    print('Der Räuber muss die Position wechseln. Bitte erneut wählen.');
+  }
+
+  // Ziel ist jetzt die neue Position, nicht das Feld davor
+  final victim = pickVictimFromConsole(gc, target);
+  if (victim == null) {
+    return;
+  }
+
+  // addResource braucht benannte Parameter, amount ist optional
+  final stolen = gc.stealRandomResource(victim);
+  if (stolen == null) {
+    print('Der Gegner hat keine Karte zum Stehlen.');
+    return;
+  }
+
+  // stealRandomResource gibt dem aktiven Spieler die Karte bereits
+  print('Es wurde ${stolen.name} gestohlen.');
 }

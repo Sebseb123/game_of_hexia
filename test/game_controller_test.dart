@@ -5,6 +5,7 @@ import 'package:game_of_hexia/src/models/building_type.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
+import 'package:game_of_hexia/src/models/robber.dart';
 
 void main() {
   test('rolls values between 2 and 12', () {
@@ -102,6 +103,58 @@ void main() {
       expect(player.fishes, 4);
     },
   );
+
+  test('steals one card from the victim and gives it to the active player', () {
+    final active = Player(color: PlayerColor.blue, name: 'Blue');
+    final victim = Player(color: PlayerColor.red, name: 'Red');
+    final controller = GameController(
+      gameBoard: HexagonBoard(radius: 1),
+      dice: Dices(),
+      players: [active, victim],
+    );
+    victim.woods = 3;
+    victim.fishes = 2;
+
+    final stolen = controller.stealRandomResource(victim);
+
+    expect(stolen, isNotNull);
+    expect(victim.getResourceCards().values.fold(0, (sum, n) => sum + n), 4);
+    expect(active.getResourceCards().values.fold(0, (sum, n) => sum + n), 1);
+  });
+
+  test('steals nothing when the victim has no cards left', () {
+    final active = Player(color: PlayerColor.blue, name: 'Blue');
+    final victim = Player(color: PlayerColor.red, name: 'Red');
+    final controller = GameController(
+      gameBoard: HexagonBoard(radius: 1),
+      dice: Dices(),
+      players: [active, victim],
+    );
+
+    expect(controller.stealRandomResource(victim), isNull);
+    expect(active.getResourceCards(), isEmpty);
+  });
+
+  test('does not give resources from a field blocked by the robber', () {
+    final board = HexagonBoard(radius: 1);
+    final hexagon = board.getHexagon(1, 0)!;
+    hexagon.type = ResourceType.wood;
+    hexagon.numberDisc = 8;
+    final node = board.getNode(hexagon.top.x, hexagon.top.y)!;
+    node.owner = PlayerColor.blue;
+    node.building = BuildingType.settlement;
+    final player = Player(color: PlayerColor.blue, name: 'Blue');
+    final controller = GameController(
+      gameBoard: board,
+      dice: Dices(),
+      players: [player],
+    );
+    board.robber = Robber(hexagon);
+
+    controller.distributeResources(8);
+
+    expect(player.woods, 0);
+  });
 
   test('checks the possibleToPlaceSettlement method', () {
     final board = HexagonBoard(radius: 2);
