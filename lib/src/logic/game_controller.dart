@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:game_of_hexia/src/logic/dice.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/building_type.dart';
@@ -7,7 +8,8 @@ import 'package:game_of_hexia/src/models/edge.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
 import 'package:game_of_hexia/src/models/development_card_deck.dart';
-
+import 'package:game_of_hexia/src/models/development_card_type.dart';
+import 'package:game_of_hexia/src/models/bank_of_resource.dart';
 
 /// Coordinates game actions between the board, dice and players.
 class GameController {
@@ -16,6 +18,9 @@ class GameController {
   final List<Player> players;
   int activePlayerIndex = 0;
   final DevelopmentCardDeck developmentCardDeck = DevelopmentCardDeck();
+  final bank = BankOfResource();
+  Player? largestArmyOwner;
+  Player? longestRoadOwner;
 
   GameController({
     required this.gameBoard,
@@ -42,21 +47,99 @@ class GameController {
     return total;
   }
 
-   /// Methode, die den Kauf einer Entwicklungskarte abwickelt
+  /// Methode, die den Kauf einer Entwicklungskarte abwickelt
 
-  bool developmentCardPurchase(Player player){
-
+  bool developmentCardPurchase(Player player) {
     if (player != getActivePlayer()) return false;
-    if(!player.canBuyDevelopmentCard()) return false;
-    if(developmentCardDeck.cardDeck.isEmpty) return false;
+    if (!player.canBuyDevelopmentCard()) return false;
+    if (developmentCardDeck.cardDeck.isEmpty) return false;
 
-    player.iron --;
-    player.fishes--;
+    player.iron--;
+    player.fish--;
     player.cattle--;
 
     final card = developmentCardDeck.cardDeck.removeLast();
 
     player.developmentCards.add((card, false));
+
+    if (card == DevelopmentCardType.victoryPoint) player.hiddenWinPoints++;
+
+    return true;
+  }
+
+
+  /// eine Straßenkarte spielen
+  bool playRoadDevelopmentCard(Edge edge) {
+
+    Player activePlayer = getActivePlayer();
+    if(!getActivePlayer().developmentCards.contains((DevelopmentCardType.roadBuilding, true))) return false;
+    if (activePlayer.remainingRoads <= 0) return false;
+    // Kante und Verbindung zum eigenen Straßennetz oder Gebäude prüfen.
+    if (!possibleToPlaceRoad(edge)) return false;
+    activePlayer.remainingRoads --;
+    // Straße platzieren und den Vorrat des Spielers reduzieren.
+    edge.roadOwner = activePlayer.color;
+
+    return true;
+  }
+
+
+ /// eine bestimmte Anzahl von Ressourcen von der Bank bekommen und die
+  /// wirkliche Anzahl als Rückgabe
+  int getResourceFromBank(ResourceType resource, {int amount = 1}) {
+
+    if (resource == ResourceType.empty) return 0;
+    if (amount <= 0) return 0;
+
+    final activePlayer = getActivePlayer();
+    int resourceAmount = bank.getResource(resource, amount: amount);
+
+    activePlayer.addResource(resource: resource, amount: resourceAmount);
+
+     return resourceAmount;
+  }
+
+  /// eine Year of Plenty karte wird gespielt
+  bool playYearOfPlentyCard(ResourceType card1, ResourceType card2) {
+    if (!getActivePlayer().developmentCards.contains((DevelopmentCardType.yearOfPlenty, true))) return false;
+    if (card1 == ResourceType.empty || card2 == ResourceType.empty) return false;
+
+    if (card1 == card2) {
+      if (bank.getAmount(card1) < 2) return false;
+    } else {
+      if (bank.getAmount(card1) < 1 || bank.getAmount(card2) < 1) return false;
+    }
+
+    getResourceFromBank(card1);
+    getResourceFromBank(card2);
+
+    getActivePlayer().developmentCards.remove((DevelopmentCardType.yearOfPlenty, true));
+
+    return true;
+  }
+
+
+  /// eine Monopolkarte wird gespielt
+  bool playMonopolyCard(ResourceType stealingType) {
+
+    if(!getActivePlayer().developmentCards.contains((DevelopmentCardType.monopoly, true))) return false;
+    if (stealingType == ResourceType.empty) return false;
+
+    getActivePlayer().developmentCards.remove((DevelopmentCardType.monopoly, true));
+
+    int sum = 0;
+
+    for (final player in players) {
+      if (player == getActivePlayer()) continue;
+      int playerAmount = player.getResourceCards()[stealingType] ?? 0;
+      sum += playerAmount;
+      for (playerAmount; playerAmount > 0; playerAmount--) {
+        player.removeResource(stealingType);
+      }
+    }
+
+    getActivePlayer().addResource(resource: stealingType, amount: sum);
+
     return true;
   }
 
@@ -65,15 +148,64 @@ class GameController {
 
 
 
+  /// eine Ritter Entwicklungskarte wird gespielt
+  bool playAKnightCard(Player player, Hexagon target, Player? victim) {
+    if (player != getActivePlayer()) return false;
+    if (!player.developmentCards.contains((DevelopmentCardType.knight, true)))
+      return false;
+    if (!moveRobber(target)) return false;
+
+    // if (!getPossibleVictimsForRobber(target).contains(victim)) return false;
+
+    if (victim != null) stealRandomResource(victim);
+
+    player.playedKnights++;
+    player.developmentCards.remove((DevelopmentCardType.knight, true));
+    return true;
+  }
+
+  // Updaten des Spielzustands: der Spieler mit der stärksten Rittermacht
+  void updateLargestArmyOwner() {
+    Player? strongestArmyOwner;
+
+    for (final player in players) {
+      if (player.playedKnights >= 3 &&
+          (strongestArmyOwner == null ||
+              player.playedKnights > strongestArmyOwner.playedKnights)) {
+        strongestArmyOwner = player;
+      }
+    }
+    if (strongestArmyOwner == null) return;
+    if (largestArmyOwner == null) {
+      largestArmyOwner = strongestArmyOwner;
+      strongestArmyOwner.winPoints += 2;
+      return;
+    }
+
+    if (strongestArmyOwner.playedKnights > largestArmyOwner!.playedKnights) {
+      largestArmyOwner!.winPoints -= 2;
+      largestArmyOwner = strongestArmyOwner;
+      strongestArmyOwner.winPoints += 2;
+      return;
+    }
+  }
+
   /// Steals one card of the resources from [victim] and gives it to the
   /// active player. Returns the stolen resource, or null if the victim has
   /// no cards left.
   ResourceType? stealRandomResource(Player victim) {
-    final keys = victim.getResourceCards().keys.toList()..shuffle();
+    final resourceCards = <ResourceType>[];
 
-    if (keys.isEmpty) return null;
+    for (final entry in victim.getResourceCards().entries) {
+      for (var i = 0; i < entry.value; i++) {
+        resourceCards.add(entry.key);
+      }
+    }
 
-    final stolen = keys.first;
+    if (resourceCards.isEmpty) return null;
+    resourceCards.shuffle();
+    final stolen = resourceCards.first;
+
     if (!victim.removeResource(stolen)) return null;
 
     getActivePlayer().addResource(resource: stolen);
@@ -102,25 +234,10 @@ class GameController {
         .toList();
   }
 
-  /// Returns whether the active player has a settlement or city next to
-  /// [target]. The robber must not be placed on the active players own field.
-  bool isRobberBlockedForActivePlayer(Hexagon target) {
-    final activeColor = getActivePlayer().color;
-
-    for (final corner in target.corners) {
-      final node = gameBoard.getNode(corner.x, corner.y);
-      if (node == null || node.building == null) continue;
-
-      if (node.owner == activeColor) return true;
-    }
-
-    return false;
-  }
-
   /// calculates the number of cards a player has to give away when the robber gets
   /// rolled
   int calculateCardsToThrowAway(Player p) {
-    int sum = p.stone + p.cattle + p.fishes + p.iron + p.woods;
+    int sum = p.stone + p.cattle + p.fish + p.iron + p.wood;
     return sum > 7 ? sum ~/ 2 : 0;
   }
 
@@ -158,16 +275,16 @@ class GameController {
     final discardStone = selectedResources[ResourceType.stone] ?? 0;
     final discardIron = selectedResources[ResourceType.iron] ?? 0;
 
-    if (player.woods < discardWoods ||
-        player.fishes < discardFishes ||
+    if (player.wood < discardWoods ||
+        player.fish < discardFishes ||
         player.cattle < discardCattle ||
         player.stone < discardStone ||
         player.iron < discardIron) {
       return false;
     }
 
-    player.woods -= discardWoods;
-    player.fishes -= discardFishes;
+    player.wood -= discardWoods;
+    player.fish -= discardFishes;
     player.iron -= discardIron;
     player.stone -= discardStone;
     player.cattle -= discardCattle;
@@ -306,6 +423,21 @@ class GameController {
         n.building == BuildingType.settlement;
   }
 
+  // Gibt eine Liste von Kanten zurück, auf denen es für den aktiven
+  // Spiele möglich wäre, eine Straße zu bauen
+  List<Edge> getPossibleEdgesToPlaceRoad() {
+
+    List<Edge> possibleEdges = [];
+    final activePlayer = getActivePlayer();
+
+    for(final edge in gameBoard.allEdges) {
+       if (possibleToPlaceRoad(edge)){
+         possibleEdges.add(edge);
+       }
+    }
+    return possibleEdges;
+  }
+
   // Prüft, ob es möglich ist, eine Straße zwischen zwei Knoten zu bauen
   bool possibleToPlaceRoad(Edge edge) {
     final activePlayer = getActivePlayer();
@@ -336,12 +468,12 @@ class GameController {
 
   // Ressourcen abziehen, wenn Spieler Siedlung baut
   bool tryPayForSettlement(Player activePlayer) {
-    if (activePlayer.woods >= 1 &&
+    if (activePlayer.wood >= 1 &&
         activePlayer.stone >= 1 &&
-        activePlayer.fishes >= 1 &&
+        activePlayer.fish >= 1 &&
         activePlayer.cattle >= 1) {
-      activePlayer.woods -= 1;
-      activePlayer.fishes -= 1;
+      activePlayer.wood -= 1;
+      activePlayer.fish -= 1;
       activePlayer.cattle -= 1;
       activePlayer.stone -= 1;
       return true;
@@ -351,9 +483,9 @@ class GameController {
 
   // Ressourcen abziehen, wenn Spieler eine Stadt baut
   bool tryPayForCity(Player activePlayer) {
-    if (activePlayer.iron >= 3 && activePlayer.fishes >= 2) {
+    if (activePlayer.iron >= 3 && activePlayer.fish >= 2) {
       activePlayer.iron -= 3;
-      activePlayer.fishes -= 2;
+      activePlayer.fish -= 2;
       return true;
     }
     return false;
@@ -361,8 +493,8 @@ class GameController {
 
   // Ressourcen abziehen, wenn Spieler eine Straße baut
   bool tryPayForRoad(Player activePlayer) {
-    if (activePlayer.woods >= 1 && activePlayer.stone >= 1) {
-      activePlayer.woods -= 1;
+    if (activePlayer.wood >= 1 && activePlayer.stone >= 1) {
+      activePlayer.wood -= 1;
       activePlayer.stone -= 1;
       return true;
     }

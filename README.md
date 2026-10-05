@@ -23,7 +23,11 @@ vollständige Benutzeroberfläche ist noch nicht umgesetzt.
 - Vollständiger Räuberzug: Abwerfen, Zielfeld wählen, Räuber versetzen, Opfer
   wählen und eine zufällige Karte stehlen
 - Blockierte Ressourcenproduktion auf dem Feld des Räubers
-- Regel, dass der Räuber nicht auf das eigene Feld des aktiven Spielers gesetzt wird
+- Regel, dass der Räuber auf ein anderes Feld versetzt werden muss
+- Entwicklungskartendeck mit Kaufmechanik
+- Effekte für Ritter, Monopol, Straßenbau und Erfindung
+- Verdeckte Siegpunkte und Vergabe der größten Rittermacht
+- Ressourcenbank mit 19 Karten pro Rohstoff und kontrollierter Entnahme
 
 Ein Standard-Board mit Radius 2 besteht aus:
 
@@ -43,7 +47,10 @@ lib/
     │   ├── dice.dart
     │   └── game_controller.dart
     └── models/
+        ├── bank_of_resource.dart
         ├── building_type.dart
+        ├── development_card_deck.dart
+        ├── development_card_type.dart
         ├── edge.dart
         ├── hexagon.dart
         ├── hexagon_board.dart
@@ -53,6 +60,8 @@ lib/
         └── resource_type.dart
 
 test/
+├── bank_of_resource_test.dart
+├── development_card_test.dart
 ├── game_controller_test.dart
 └── hexagon_board_test.dart
 ```
@@ -95,9 +104,14 @@ Die vorhandenen Tests prüfen unter anderem:
 - Stehlen einer zufälligen Karte, auch bei leerer Hand des Opfers
 - Blockierte Ressourcenproduktion auf dem Räuberfeld
 - Grundregeln für die Platzierung von Siedlungen und Städten
+- Zusammensetzung, Kauf und Effekte der Entwicklungskarten
+- Ressourcenbank und begrenzte Kartenentnahme
+- Vergabe und Wechsel der größten Rittermacht
 
 ## Nächste Schritte
 
+- Kommentare und Dokumentation im Code vereinheitlichen
+- Spielzustand aus dem `GameController` in einen eigenen `GameState` auslagern
 - später BuildSuccess enum implementieren als Rückgabewert
   für die Baumethoden, für die GUI
 - Straßenprüfung bei Siedlungsbau
@@ -107,21 +121,21 @@ Die vorhandenen Tests prüfen unter anderem:
 - Regeln für die Platzierung in der Anfangsphase ergänzen
 - Platzierungs- und Upgrade-Methoden nach den neuen Regeln testen
 - Aktiven Spieler und Zugwechsel über einen vollständigen Zugablauf testen
-- Benutzeroberfläche für Board und Spielaktionen entwickeln
-
-- Weitere Siedler-Mechaniken:
-- Seehäfen mit 3:1- und 2:1-Tausch
-- Handel mit Bank und Mitspielern
-- Entwicklungskarten
 - Neu gekaufte Entwicklungskarten zu Beginn des nächsten eigenen Zugs
   spielbar machen
-- Ritterkarten und „Größte Rittermacht“
+- Maximal eine Entwicklungskarte pro Zug erlauben
+- Ressourcenbank in Produktion, Baukosten und Rückgaben einbinden
+- Benutzeroberfläche für Board und Spielaktionen entwickeln
+
+### Weitere Siedler-Mechaniken
+
+- Seehäfen mit 3:1- und 2:1-Tausch
+- Handel mit Bank und Mitspielern
 - „Längste Handelsstraße“
-- Siegpunktkarten
-- Straßenbau-, Monopol- und Erfindungskarten
+- Siegpunktkarten beim Spielende aufdecken
 - Siegpunkte für Siedlungen und Städte
+- Gesamtsiegpunkte aus offenen und versteckten Siegpunkten berechnen
 - Spielende bei 10 Siegpunkten
 - Anfangsphase mit zwei kostenlosen Siedlungen und Straßen
 - Zweite Anfangssiedlung verteilt Startressourcen
 - Begrenzter Vorrat an Gebäuden und Straßen
-- Ressourcenbank und Kartenknappheit

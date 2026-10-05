@@ -38,7 +38,7 @@ void main() {
 
     controller.distributeResources(8);
 
-    expect(player.woods, 1);
+    expect(player.wood, 1);
   });
 
   test('gives a city two resources from a rolled field', () {
@@ -68,8 +68,8 @@ void main() {
       dice: Dices(),
       players: [player],
     );
-    player.woods = 4;
-    player.fishes = 4;
+    player.wood = 4;
+    player.fish = 4;
 
     final discarded = controller.discardResourcesForRobber(player, {
       ResourceType.wood: 2,
@@ -77,8 +77,8 @@ void main() {
     });
 
     expect(discarded, isTrue);
-    expect(player.woods, 2);
-    expect(player.fishes, 2);
+    expect(player.wood, 2);
+    expect(player.fish, 2);
   });
 
   test(
@@ -90,8 +90,8 @@ void main() {
         dice: Dices(),
         players: [player],
       );
-      player.woods = 4;
-      player.fishes = 4;
+      player.wood = 4;
+      player.fish = 4;
 
       final discarded = controller.discardResourcesForRobber(player, {
         ResourceType.wood: 5,
@@ -99,8 +99,8 @@ void main() {
       });
 
       expect(discarded, isFalse);
-      expect(player.woods, 4);
-      expect(player.fishes, 4);
+      expect(player.wood, 4);
+      expect(player.fish, 4);
     },
   );
 
@@ -112,8 +112,8 @@ void main() {
       dice: Dices(),
       players: [active, victim],
     );
-    victim.woods = 3;
-    victim.fishes = 2;
+    victim.wood = 3;
+    victim.fish = 2;
 
     final stolen = controller.stealRandomResource(victim);
 
@@ -153,7 +153,7 @@ void main() {
 
     controller.distributeResources(8);
 
-    expect(player.woods, 0);
+    expect(player.wood, 0);
   });
 
   test('checks the possibleToPlaceSettlement method', () {
@@ -251,17 +251,17 @@ void main() {
       players: [player],
     );
     player.iron = 3;
-    player.fishes = 2;
+    player.fish = 2;
 
     expect(controller.tryPayForCity(player), isTrue);
     expect(player.iron, 0);
-    expect(player.fishes, 0);
+    expect(player.fish, 0);
 
     player.iron = 2;
-    player.fishes = 2;
+    player.fish = 2;
     expect(controller.tryPayForCity(player), isFalse);
     expect(player.iron, 2);
-    expect(player.fishes, 2);
+    expect(player.fish, 2);
   });
 
   test('pays road costs only with enough resources', () {
@@ -271,16 +271,16 @@ void main() {
       dice: Dices(),
       players: [player],
     );
-    player.woods = 1;
+    player.wood = 1;
     player.stone = 1;
 
     expect(controller.tryPayForRoad(player), isTrue);
-    expect(player.woods, 0);
+    expect(player.wood, 0);
     expect(player.stone, 0);
 
-    player.woods = 1;
+    player.wood = 1;
     expect(controller.tryPayForRoad(player), isFalse);
-    expect(player.woods, 1);
+    expect(player.wood, 1);
     expect(player.stone, 0);
   });
 
@@ -298,14 +298,14 @@ void main() {
     node.building = BuildingType.settlement;
     player.remainingSettlements = 4;
     player.iron = 3;
-    player.fishes = 2;
+    player.fish = 2;
 
     expect(controller.upgradeSettlementToCity(node), isTrue);
     expect(node.building, BuildingType.city);
     expect(player.remainingCities, 3);
     expect(player.remainingSettlements, 5);
     expect(player.iron, 0);
-    expect(player.fishes, 0);
+    expect(player.fish, 0);
   });
 
   test('places and pays for a road', () {
@@ -319,13 +319,13 @@ void main() {
     final edge = board.allEdges.first;
     edge.n.owner = PlayerColor.blue;
     edge.n.building = BuildingType.settlement;
-    player.woods = 1;
+    player.wood = 1;
     player.stone = 1;
 
     expect(controller.placeRoad(edge), isTrue);
     expect(edge.roadOwner, PlayerColor.blue);
     expect(player.remainingRoads, 14);
-    expect(player.woods, 0);
+    expect(player.wood, 0);
     expect(player.stone, 0);
 
     expect(controller.placeRoad(edge), isFalse);

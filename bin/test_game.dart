@@ -4,6 +4,8 @@ import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/node.dart';
+import 'package:game_of_hexia/src/models/edge.dart';
+import 'package:game_of_hexia/src/models/development_card_type.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
 
 import 'dart:io';
@@ -186,10 +188,7 @@ Hexagon? pickRobberTarget(GameController gc) {
   final currentPosition = board.robber?.currentPosition;
   final fields = board
       .getHexagons()
-      .where(
-        (hex) =>
-            hex != currentPosition && !gc.isRobberBlockedForActivePlayer(hex),
-      )
+      .where((hex) => hex != currentPosition)
       .toList();
 
   while (true) {
@@ -263,4 +262,218 @@ void handleRobberTurn(GameController gc, int diceValue) {
 
   // stealRandomResource gibt dem aktiven Spieler die Karte bereits
   print('Es wurde ${stolen.name} gestohlen.');
+}
+
+/// Ablauf, wenn ein Spieler eine Monopolkarte spielt
+
+void handlePlayedMonopolyCardTurn(GameController gc) {
+  final resourceTypes = ResourceType.values
+      .where((resource) => resource != ResourceType.empty)
+      .toList();
+
+  while (true) {
+    print(
+      'Du hast die Monopolkarte ausgespielt. '
+      'Welche Ressource möchtest Du stehlen?',
+    );
+
+    for (var i = 0; i < resourceTypes.length; i++) {
+      print('${i + 1}: ${resourceTypes[i].name}');
+    }
+
+    stdout.write('Nummer des Rohstoffs: ');
+    final choice = int.tryParse(stdin.readLineSync() ?? '');
+
+    if (choice == null || choice < 1 || choice > resourceTypes.length) {
+      print('Bitte eine gueltige Nummer eingeben.');
+      continue;
+    }
+
+    final ResourceType stealingType = resourceTypes[choice - 1];
+    gc.playMonopolyCard(stealingType);
+    return;
+  }
+}
+
+///  Ablauf, wenn ein Spieler eine Ritterkarte spielt
+void handlePlayedKnightCardTurn(GameController gc) {
+  if (!gc.getActivePlayer().developmentCards.contains((
+    DevelopmentCardType.knight,
+    true,
+  )))
+    return;
+
+  final target = pickRobberTarget(gc);
+  if (target == null) return;
+  final victim = pickVictimFromConsole(gc, target);
+  gc.playAKnightCard(gc.getActivePlayer(), target, victim);
+}
+
+/// Ablauf, wenn ein Spieler eine Straßen Entwicklungskarte spielt
+void handleRoadDevelopmentCard(GameController gc) {
+  if (!gc.getActivePlayer().developmentCards.contains((
+    DevelopmentCardType.roadBuilding,
+    true,
+  )))
+    return;
+
+  if (gc.getActivePlayer().remainingRoads <= 0) {
+    gc.getActivePlayer().developmentCards.remove((
+      DevelopmentCardType.roadBuilding,
+      true,
+    ));
+    return;
+  }
+
+  List<Edge> possibleEdges = gc.getPossibleEdgesToPlaceRoad();
+  if (possibleEdges.isEmpty) {
+    gc.getActivePlayer().developmentCards.remove((
+      DevelopmentCardType.roadBuilding,
+      true,
+    ));
+    return;
+  }
+
+  while (true) {
+    print(
+      'Du hast die Straßenkarte ausgespielt. '
+      'Auf welcher Kante möchtest Du eine Straße bauen?',
+    );
+
+    for (var i = 0; i < possibleEdges.length; i++) {
+      print(
+        '${i + 1}: '
+        '(${possibleEdges[i].n.x}, ${possibleEdges[i].n.y}) -> '
+        '(${possibleEdges[i].m.x}, ${possibleEdges[i].m.y})',
+      );
+    }
+
+    stdout.write(
+      'Schreib die Nummer des Kante: '
+      'Möchtest Du keine weitere Straße bauen, tippe die 0.',
+    );
+    final choice = int.tryParse(stdin.readLineSync() ?? '');
+
+    if (choice == 0) {
+      gc.getActivePlayer().developmentCards.remove((
+        DevelopmentCardType.roadBuilding,
+        true,
+      ));
+      return;
+    }
+
+    if (choice == null || choice < 1 || choice > possibleEdges.length) {
+      print('Bitte eine gueltige Nummer eingeben.');
+      continue;
+    }
+
+    Edge firstRoad = possibleEdges[choice - 1];
+    if (!gc.playRoadDevelopmentCard(firstRoad)) continue;
+    break;
+  }
+
+  possibleEdges = gc.getPossibleEdgesToPlaceRoad();
+  if (possibleEdges.isEmpty) {
+    gc.getActivePlayer().developmentCards.remove((
+      DevelopmentCardType.roadBuilding,
+      true,
+    ));
+    return;
+  }
+
+  while (true) {
+    if (gc.getActivePlayer().remainingRoads > 0) {
+      print(
+        'Du hast die Straßenkarte ausgespielt. '
+        'Da du noch eine Straße bauen kannst:'
+        'Auf welcher Kante möchtest Du deine zweite Straße bauen?'
+        'Möchtest Du keine weitere Straße bauen, tippe die 0.',
+      );
+
+      for (var i = 0; i < possibleEdges.length; i++) {
+        print(
+          '${i + 1}: '
+          '(${possibleEdges[i].n.x}, ${possibleEdges[i].n.y}) -> '
+          '(${possibleEdges[i].m.x}, ${possibleEdges[i].m.y})',
+        );
+      }
+
+      stdout.write('Schreib die Nummer des Kante: ');
+      final choice = int.tryParse(stdin.readLineSync() ?? '');
+      if (choice == 0) {
+        gc.getActivePlayer().developmentCards.remove((
+          DevelopmentCardType.roadBuilding,
+          true,
+        ));
+        return;
+      }
+
+      if (choice == null || choice < 1 || choice > possibleEdges.length) {
+        print('Bitte eine gueltige Nummer eingeben.');
+        continue;
+      }
+
+      Edge secondRoad = possibleEdges[choice - 1];
+      if (!gc.playRoadDevelopmentCard(secondRoad)) continue;
+      gc.getActivePlayer().developmentCards.remove((
+        DevelopmentCardType.roadBuilding,
+        true,
+      ));
+      return;
+    } else {
+      gc.getActivePlayer().developmentCards.remove((
+        DevelopmentCardType.roadBuilding,
+        true,
+      ));
+      return;
+    }
+  }
+}
+
+/// Ablauf, wenn ein Spieler eine Year of Plenty (2 Ressourcen)
+/// Entwicklungskarte spielt
+void handleYearOfPlentyCardTurn(GameController gc) {
+
+  if (!gc.getActivePlayer().developmentCards.contains((DevelopmentCardType.yearOfPlenty, true, ))) {return;}
+
+  final resourceTypes = ResourceType.values
+      .where((resource) => resource != ResourceType.empty)
+      .toList();
+  final selectedResources = <ResourceType>[];
+
+  while (selectedResources.length < 2) {
+    print(
+      'Welche Ressource möchtest Du als '
+      '${selectedResources.length + 1}. Karte nehmen?',
+    );
+
+    for (var i = 0; i < resourceTypes.length; i++) {
+      print(
+        '${i + 1}: ${resourceTypes[i].name} '
+        '(Bank: ${gc.bank.getAmount(resourceTypes[i])})',
+      );
+    }
+
+    stdout.write('Nummer des Rohstoffs: ');
+    final choice = int.tryParse(stdin.readLineSync() ?? '');
+
+    if (choice == null || choice < 1 || choice > resourceTypes.length) {
+      print('Bitte eine gueltige Nummer eingeben.');
+      continue;
+    }
+
+    final resource = resourceTypes[choice - 1];
+    final alreadySelected = selectedResources
+        .where((selected) => selected == resource)
+        .length;
+
+    if (gc.bank.getAmount(resource) <= alreadySelected) {
+      print('Dieser Rohstoff ist nicht ausreichend in der Bank vorhanden.');
+      continue;
+    }
+
+    selectedResources.add(resource);
+  }
+
+  gc.playYearOfPlentyCard(selectedResources[0], selectedResources[1]);
 }

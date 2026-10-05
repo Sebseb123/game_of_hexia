@@ -10,14 +10,23 @@ class Player {
   final String name;
   final List<(DevelopmentCardType, bool)> developmentCards = [];
 
+
+  // Rittermacht
+  int playedKnights = 0;
+
+  // winPoints
+  int winPoints = 0;
+  int hiddenWinPoints = 0;
+  int totalWinPoints = 0;
+
   // buildings
   int remainingSettlements = 5;
   int remainingCities = 4;
   int remainingRoads = 15;
 
   // resources
-  int woods = 0;
-  int fishes = 0;
+  int wood = 0;
+  int fish = 0;
   int iron = 0;
   int stone = 0;
   int cattle = 0;
@@ -36,9 +45,9 @@ class Player {
 
     switch (resource) {
       case ResourceType.wood:
-        woods += amount * factor;
+        wood += amount * factor;
       case ResourceType.fish:
-        fishes += amount * factor;
+        fish += amount * factor;
       case ResourceType.iron:
         iron += amount * factor;
       case ResourceType.stone:
@@ -53,11 +62,11 @@ class Player {
   /// Returns the amount of each resource card in the players hand.
   Map<ResourceType, int> getResourceCards() {
     Map<ResourceType, int> resourceCards = {};
-    if (woods > 0) {
-      resourceCards[ResourceType.wood] = woods;
+    if (wood > 0) {
+      resourceCards[ResourceType.wood] = wood;
     }
-    if (fishes > 0) {
-      resourceCards[ResourceType.fish] = fishes;
+    if (fish > 0) {
+      resourceCards[ResourceType.fish] = fish;
     }
     if (iron > 0) {
       resourceCards[ResourceType.iron] = iron;
@@ -75,11 +84,11 @@ class Player {
   bool removeResource(ResourceType resource) {
     switch (resource) {
       case ResourceType.wood:
-        if (woods == 0) return false;
-        woods--;
+        if (wood == 0) return false;
+        wood--;
       case ResourceType.fish:
-        if (fishes == 0) return false;
-        fishes--;
+        if (fish == 0) return false;
+        fish--;
       case ResourceType.iron:
         if (iron == 0) return false;
         iron--;
@@ -98,9 +107,10 @@ class Player {
 
   /// kleine Prüfmethode, ob eine Entwicklungskarte gekauft werden kann
    bool canBuyDevelopmentCard() {
-        if(cattle > 0 && fishes > 0 && iron > 0) return true;
+        if(cattle > 0 && fish > 0 && iron > 0) return true;
         return false;
    }
+
 
 
 }
