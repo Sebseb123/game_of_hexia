@@ -1,5 +1,5 @@
+/// Development cards available in the standard deck.
 enum DevelopmentCardType {
-
   knight(name: 'Knight'),
   roadBuilding(name: 'Road Building'),
   yearOfPlenty(name: 'Year of Plenty'),

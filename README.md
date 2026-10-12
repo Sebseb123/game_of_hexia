@@ -7,27 +7,37 @@ vollständige Benutzeroberfläche ist noch nicht umgesetzt.
 ## Aktueller Stand
 
 - Hexagonales Spielfeld mit frei wählbarem Radius
-- Strukturierung der Klassen
-- Korrekte Anordnung der Reihen zu einem geschlossenen Board
-- Modellierung von Kanten
-- Zufällige Verteilung der Ressourcenfelder
-- Platzierung der Zahlenchips
-- Eindeutige Knoten (`Node`) an den Hexagon-Ecken
-- Eindeutige Kanten (`Edge`) zwischen benachbarten Knoten
-- Ermittlung benachbarter Knoten und Hexagons
-- Spieler und Spielerwechsel
-- Würfeln und Verteilen von Ressourcen an Siedlungen und Städte
-- Prüfung der grundlegenden Bedingungen für Siedlungen und Städte
-- Startposition des Räubers auf einem Wüstenfeld
-- Berechnung, Konsolenauswahl und validiertes Abwerfen von Ressourcen bei einer 7
-- Vollständiger Räuberzug: Abwerfen, Zielfeld wählen, Räuber versetzen, Opfer
-  wählen und eine zufällige Karte stehlen
-- Blockierte Ressourcenproduktion auf dem Feld des Räubers
-- Regel, dass der Räuber auf ein anderes Feld versetzt werden muss
-- Entwicklungskartendeck mit Kaufmechanik
-- Effekte für Ritter, Monopol, Straßenbau und Erfindung
-- Verdeckte Siegpunkte und Vergabe der größten Rittermacht
+- Geschlossenes Board aus eindeutigen Hexagons, Knoten (`Node`) und Kanten
+  (`Edge`)
+- Zufällige Verteilung der Ressourcenfelder und spiralförmige Platzierung der
+  Zahlenchips
+- Ermittlung benachbarter Knoten, Kanten und Hexagons
+- Getrennter Spielzustand (`GameState`) und Regelsteuerung (`GameController`)
+- Spieler, aktiver Spieler und einfacher Spielerwechsel
+- Würfeln und Ressourcenproduktion für Siedlungen und Städte
+- Grundlegende Platzierungs-, Upgrade- und Bezahlregeln für Gebäude und Straßen
 - Ressourcenbank mit 19 Karten pro Rohstoff und kontrollierter Entnahme
+- Vollständige Räubermechanik für die Konsole: Karten abwerfen, Zielfeld wählen,
+  Räuber versetzen, Opfer auswählen und eine zufällige Karte stehlen
+- Blockierte Ressourcenproduktion auf dem Feld des Räubers
+- Entwicklungskartendeck mit Kaufmechanik sowie Effekten für Ritter, Monopol,
+  Straßenbau und Erfindung
+- Verdeckte Siegpunkte durch Entwicklungskarten
+- Berechnung, Vergabe und Übertragung der größten Rittermacht
+- Konsolenprototyp für Spielaufbau und einzelne Spielaktionen
+- 36 automatisierte Tests und eine fehlerfreie statische Analyse
+
+### Bekannte Lücken
+
+- Die größte Rittermacht wird berechnet und getestet, aber nach einer gespielten
+  Ritterkarte noch nicht automatisch aktualisiert.
+- Die längste Straße ist noch nicht implementiert. Im `GameState` existiert
+  bisher nur der zukünftige Besitzerzustand `longestRoadOwner`.
+- Die Ressourcenbank wird bereits für Karteneffekte verwendet, aber noch nicht
+  vollständig in Produktion, Baukosten und Rückgaben eingebunden.
+- Es gibt noch keinen vollständigen Zugablauf, keine vollständige Anfangsphase
+  und keine Prüfung auf das Spielende.
+- Eine grafische Benutzeroberfläche ist noch nicht umgesetzt.
 
 Ein Standard-Board mit Radius 2 besteht aus:
 
@@ -52,6 +62,7 @@ lib/
         ├── development_card_deck.dart
         ├── development_card_type.dart
         ├── edge.dart
+        ├── game_state.dart
         ├── hexagon.dart
         ├── hexagon_board.dart
         ├── node.dart
@@ -74,7 +85,7 @@ Abhängigkeiten installieren:
 flutter pub get
 ```
 
-Die Konsolenausgabe des Boards starten:
+Den Konsolenprototyp starten:
 
 ```bash
 dart run bin/test_game.dart
@@ -89,12 +100,12 @@ flutter test
 Statische Codeanalyse ausführen:
 
 ```bash
-dart analyze
+flutter analyze
 ```
 
 ## Tests
 
-Die vorhandenen Tests prüfen unter anderem:
+Die derzeit 36 Tests prüfen unter anderem:
 
 - Anzahl der Hexagons, Knoten und Kanten
 - Gleichheit richtungsunabhängiger Kanten
@@ -110,32 +121,37 @@ Die vorhandenen Tests prüfen unter anderem:
 
 ## Nächste Schritte
 
-- Kommentare und Dokumentation im Code vereinheitlichen
-- Spielzustand aus dem `GameController` in einen eigenen `GameState` auslagern
-- später BuildSuccess enum implementieren als Rückgabewert
-  für die Baumethoden, für die GUI
-- Straßenprüfung bei Siedlungsbau
-- längste Straße
-- wahrscheinlich sinnvoll, noch eine SpielerID einzuführen
-- Straßenverbindung bei der Platzierung von Siedlungen prüfen
-- Regeln für die Platzierung in der Anfangsphase ergänzen
-- Platzierungs- und Upgrade-Methoden nach den neuen Regeln testen
-- Aktiven Spieler und Zugwechsel über einen vollständigen Zugablauf testen
-- Neu gekaufte Entwicklungskarten zu Beginn des nächsten eigenen Zugs
+### Spielfluss und Entwicklungskarten
+
+- Vollständigen Zugablauf mit Würfeln, Aktionen und Zugwechsel umsetzen und
+  testen
+- Neu gekaufte Entwicklungskarten erst zu Beginn des nächsten eigenen Zugs
   spielbar machen
 - Maximal eine Entwicklungskarte pro Zug erlauben
+- Größte Rittermacht nach jeder gespielten Ritterkarte automatisch aktualisieren
+- Tests für weniger als drei Ritter, Gleichstände und Besitzerwechsel ergänzen
+
+### Bauen und Sonderpunkte
+
+- Straßenverbindung bei der Platzierung von Siedlungen prüfen
+- Regeln für die Anfangsphase mit zwei kostenlosen Siedlungen und Straßen
+  ergänzen
+- Startressourcen für die zweite Anfangssiedlung verteilen
+- Längste Straße berechnen, Besitzerwechsel abbilden und Siegpunkte vergeben
+- Platzierungs-, Upgrade- und Straßenregeln umfassender testen
+- `BuildSuccess` als Rückgabewert der Baumethoden für die spätere GUI prüfen
+
+### Ressourcen und Spielende
+
 - Ressourcenbank in Produktion, Baukosten und Rückgaben einbinden
-- Benutzeroberfläche für Board und Spielaktionen entwickeln
-
-### Weitere Siedler-Mechaniken
-
-- Seehäfen mit 3:1- und 2:1-Tausch
-- Handel mit Bank und Mitspielern
-- „Längste Handelsstraße“
+- Siegpunkte für Siedlungen und Städte vergeben
+- Offene und versteckte Siegpunkte zu einem Gesamtwert zusammenführen
 - Siegpunktkarten beim Spielende aufdecken
-- Siegpunkte für Siedlungen und Städte
-- Gesamtsiegpunkte aus offenen und versteckten Siegpunkten berechnen
-- Spielende bei 10 Siegpunkten
-- Anfangsphase mit zwei kostenlosen Siedlungen und Straßen
-- Zweite Anfangssiedlung verteilt Startressourcen
-- Begrenzter Vorrat an Gebäuden und Straßen
+- Spielende bei zehn Siegpunkten erkennen
+
+### Handel und Oberfläche
+
+- Handel mit Bank und Mitspielern implementieren
+- Seehäfen mit 3:1- und 2:1-Tausch ergänzen
+- Stabile Spieler-ID zusätzlich zur Spielerfarbe prüfen
+- Benutzeroberfläche für Board und Spielaktionen entwickeln

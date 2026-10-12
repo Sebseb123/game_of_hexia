@@ -1,20 +1,20 @@
-import 'package:game_of_hexia/src/models/resource_type.dart';
-import 'package:game_of_hexia/src/models/node.dart';
-import 'package:game_of_hexia/src/models/robber.dart';
-import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/edge.dart';
+import 'package:game_of_hexia/src/models/hexagon.dart';
+import 'package:game_of_hexia/src/models/node.dart';
+import 'package:game_of_hexia/src/models/resource_type.dart';
+import 'package:game_of_hexia/src/models/robber.dart';
 
-
-///Das HexagonBoard besteht aus Hexagons. Hexagons sind einmal über einen Index bzw AxialKoord. adressierbar (der key in _grid),
-///besitzen aber auch eine karthesische Koordinate (center). Jedes Hexagon hat 6 Ecken, die wiederum auch über eine karthesische Koordinate verfügen
+/// A hexagonal board whose tiles use axial indices and Cartesian geometry.
 class HexagonBoard {
   final int radius;
-  final Map<({int x, int y}), Hexagon> _grid = {}; // Der Schlüssel ist ein Axial Koordinatenpunkt
+
+  /// Tiles keyed by their axial coordinates.
+  final Map<({int x, int y}), Hexagon> _grid = {};
   final Map<Point2D, Node> _nodes = {};
   final Set<Edge> allEdges = {};
   Robber? robber;
 
-  //Each tile/hexagon has 6 different directions/borders
+  /// Offsets to the six neighboring axial coordinates.
   final tileDirections = [
     (0, -1),
     (1, -1),
@@ -45,7 +45,7 @@ class HexagonBoard {
     initEdges();
   }
 
-  //Use this to place hexagons randomly on board
+  /// Randomly assigns resources and places the robber on the first desert.
   void placeHexagons() {
     const resourceTypes = [
       ResourceType.wood,
@@ -99,27 +99,9 @@ class HexagonBoard {
   }
 
   /// Places number discs in a spiral, starting at the outer top-right corner.
+  /// Deserts are skipped; larger boards repeat the standard sequence.
   void placeNumberDiscs() {
-    const List<int> standardDiscs = [
-      5,
-      2,
-      6,
-      3,
-      8,
-      10,
-      9,
-      12,
-      11,
-      4,
-      8,
-      10,
-      9,
-      4,
-      5,
-      6,
-      3,
-      11,
-    ];
+    const discs = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11];
 
     const directions = [
       (x: -1, y: 0),
@@ -136,7 +118,7 @@ class HexagonBoard {
 
     var discIndex = 0;
     for (var ring = radius; ring > 0; ring--) {
-      // Startposition rechts oben für den Ring
+      // Walk each ring clockwise from its top-right tile.
       var current = (x: radius + ring, y: radius - ring);
 
       for (var side = 0; side < 6; side++) {
@@ -144,8 +126,7 @@ class HexagonBoard {
         for (var step = 0; step < ring; step++) {
           final hexagon = _grid[current];
           if (hexagon != null && hexagon.type != ResourceType.empty) {
-            hexagon.numberDisc =
-                standardDiscs[discIndex % standardDiscs.length];
+            hexagon.numberDisc = discs[discIndex % discs.length];
             discIndex++;
           }
           current = (x: current.x + dir.x, y: current.y + dir.y);
@@ -155,45 +136,43 @@ class HexagonBoard {
 
     final centerHexagon = _grid[(x: radius, y: radius)];
     if (centerHexagon != null && centerHexagon.type != ResourceType.empty) {
-      centerHexagon.numberDisc =
-          standardDiscs[discIndex % standardDiscs.length];
+      centerHexagon.numberDisc = discs[discIndex % discs.length];
     }
   }
 
-  //Returns the (x, y) index of a neighbour given the direction
-  //Only works with Hexagons (axial coords) and the tileDirections
+  /// Applies an axial [direction] to the tile at ([x], [y]).
   ({int x, int y})? getNeighbour(int x, int y, (int, int) direction) {
     return (x: x + direction.$1, y: y + direction.$2);
   }
 
-  //Returns number of hexagons on the board
+  /// Number of tiles on the board.
   int get length => _grid.length;
 
-  // returns a hexagon at the given axial coordinates or null if no hexagon exists there
+  /// Returns the tile at the axial coordinate ([x], [y]), if one exists.
   Hexagon? getHexagon(int x, int y) {
     return _grid[(x: x, y: y)];
   }
 
-  // returns a hexagon that has the given number on it (the dices rolled its number)
+  /// Returns all tiles whose number disc matches [diceValue].
   List<Hexagon> getHexagonWithRolledNumber(int diceValue) {
     return _grid.values
         .where((hexagon) => hexagon.numberDisc == diceValue)
         .toList();
   }
 
-  // returns all hexagons of the board
+  /// Returns all board tiles in insertion order.
   List<Hexagon> getHexagons() {
     return _grid.values.toList();
   }
 
-  // returns a Node by its given coordinates
+  /// Returns the node at the Cartesian coordinate ([x], [y]), if one exists.
   Node? getNode(double x, double y) {
     return _nodes[(x: x, y: y)];
   }
 
-  // Creates each board node once and keeps it available for ownership and buildings.
+  /// Creates each shared board node once and returns all nodes.
   Set<Node> initNodes() {
-    _grid.forEach((_, hexagon) {
+    for (final hexagon in _grid.values) {
       _nodes.putIfAbsent(
         hexagon.top,
         () => Node(x: hexagon.top.x, y: hexagon.top.y),
@@ -218,46 +197,44 @@ class HexagonBoard {
         hexagon.topLeft,
         () => Node(x: hexagon.topLeft.x, y: hexagon.topLeft.y),
       );
-    });
+    }
     return _nodes.values.toSet();
   }
 
-  // füllt die Liste, also das Klassenattribut allEdges mit allen Kanten des boards
+  /// Creates each undirected edge once and returns all board edges.
   Set<Edge> initEdges() {
-    _grid.forEach((key, hexagon) {
-      for (int i = 0; i < hexagon.corners.length; i++) {
-        Node? n = _nodes[hexagon.corners[i]];
-        Node? m = _nodes[hexagon.corners[(i + 1) % 6]];
+    for (final hexagon in _grid.values) {
+      for (var i = 0; i < hexagon.corners.length; i++) {
+        final n = _nodes[hexagon.corners[i]];
+        final m = _nodes[hexagon.corners[(i + 1) % 6]];
 
-        Edge e = Edge(n!, m!);
-        allEdges.add(e);
+        allEdges.add(Edge(n!, m!));
       }
-    });
+    }
     return allEdges;
   }
 
-  // Gibt die 0- max 3 benachbarten Nodes eines Nodes zurück
+  /// Returns the nodes connected to [n] by a board edge.
   Set<Node> getAdjacentNodesToNode(Node n) {
-    Set<Node> adjacentNodes = {};
+    final adjacentNodes = <Node>{};
 
-    allEdges.forEach((edge) {
+    for (final edge in allEdges) {
       if (n == edge.n) {
         adjacentNodes.add(edge.m);
       }
       if (n == edge.m) {
         adjacentNodes.add(edge.n);
       }
-    });
+    }
     return adjacentNodes;
   }
 
-  //Für eine gegebene Ecke werden die angrenzenden Hexagons zurückgegeben
+  /// Returns the board tiles that share [node].
   Set<Hexagon> getAdjacentHexagonsToNode(Node node) {
-    Set<Hexagon> adjacentHexagons = {};
+    final adjacentHexagons = <Hexagon>{};
 
-    //Siehe @Hexagon. Dort werden die Koordinaten zu den Ecken aus den Hexagon centern berechnet
-    //Dies ist einfach die inverse Funktion und gibt die Richtungen für mögliche Hexagon center an
-    List<Point2D> directions = [
+    // Inverse corner offsets locate every possible neighboring tile center.
+    final directions = <Point2D>[
       (x: node.x + 0.0, y: node.y + 0.5), // top
       (x: node.x - 0.5, y: node.y + 0.25), // topRight
       (x: node.x - 0.5, y: node.y - 0.25), // bottomRight
@@ -266,8 +243,8 @@ class HexagonBoard {
       (x: node.x + 0.5, y: node.y + 0.25), // topLeft
     ];
 
-    for (var dir in directions) {
-      final axialCoord = Hexagon.cartesianToAxial(dir.x, dir.y);
+    for (final direction in directions) {
+      final axialCoord = Hexagon.cartesianToAxial(direction.x, direction.y);
       final hexagon = _grid[axialCoord];
       if (hexagon != null) {
         adjacentHexagons.add(hexagon);
@@ -277,15 +254,14 @@ class HexagonBoard {
     return adjacentHexagons;
   }
 
-  //Using the same Loop as the Constructor, but here it returns a String
+  /// Formats the board row by row for console diagnostics.
   @override
   String toString() {
     final buffer = StringBuffer();
-    int startX = radius;
-    for (int y = 0; y <= radius; y++) {
-      for (int x = startX; x < 2 * radius + 1; x++) {
+    var startX = radius;
+    for (var y = 0; y <= radius; y++) {
+      for (var x = startX; x < 2 * radius + 1; x++) {
         final hexagon = _grid[(x: x, y: y)]!;
-        // Ausgeben der Ziffer, die man für das Ressourcenfeld würfeln muss
         if (hexagon.type == ResourceType.empty) {
           buffer.write('[Desert:0]');
         } else {
@@ -295,10 +271,9 @@ class HexagonBoard {
       startX--;
       buffer.writeln();
     }
-    int endX = radius * 2;
-    for (int y = radius + 1; y < 2 * radius + 1; y++) {
-      for (int x = 0; x < endX; x++) {
-        // Ausgeben der Ziffer, die man für das Ressourcenfeld würfeln muss
+    var endX = radius * 2;
+    for (var y = radius + 1; y < 2 * radius + 1; y++) {
+      for (var x = 0; x < endX; x++) {
         final hexagon = _grid[(x: x, y: y)]!;
         if (hexagon.type == ResourceType.empty) {
           buffer.write('[Desert:0]');

@@ -1,34 +1,23 @@
-import 'package:flutter/services.dart';
 import 'package:game_of_hexia/src/logic/dice.dart';
-import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/building_type.dart';
+import 'package:game_of_hexia/src/models/development_card_type.dart';
+import 'package:game_of_hexia/src/models/edge.dart';
+import 'package:game_of_hexia/src/models/game_state.dart';
 import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/node.dart';
-import 'package:game_of_hexia/src/models/edge.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
-import 'package:game_of_hexia/src/models/development_card_deck.dart';
-import 'package:game_of_hexia/src/models/development_card_type.dart';
-import 'package:game_of_hexia/src/models/bank_of_resource.dart';
 
-/// Coordinates game actions between the board, dice and players.
+/// Applies game rules to the mutable data stored in [state].
 class GameController {
-  final HexagonBoard gameBoard;
+  final GameState state;
   final Dices dice;
-  final List<Player> players;
-  int activePlayerIndex = 0;
-  final DevelopmentCardDeck developmentCardDeck = DevelopmentCardDeck();
-  final bank = BankOfResource();
-  Player? largestArmyOwner;
-  Player? longestRoadOwner;
 
-  GameController({
-    required this.gameBoard,
-    required this.dice,
-    required this.players,
-  });
+  GameController({required this.state, required this.dice});
 
-  /// Rolls once and distributes resources for the resulting total.
+  /// Rolls both dice and distributes resources unless the total is seven.
+  ///
+  /// A total of seven is returned for the caller to handle the robber turn.
   int rollDice() {
     int dice1 = 0;
     int dice2 = 0;
@@ -37,9 +26,6 @@ class GameController {
     dice2 = result.$2;
     final total = dice1 + dice2;
 
-    // Bei einer 7 wird hier nichts verteilt. Die Verteilung der 7-Felder
-    // übernimmt handleRobberTurn in test_game (gerade noch), wo
-    // die Räuber Mechanik zusammengefasst ist
     if (total == 7) {
       return total;
     }
@@ -47,18 +33,19 @@ class GameController {
     return total;
   }
 
-  /// Methode, die den Kauf einer Entwicklungskarte abwickelt
-
+  /// Charges [player] and draws the top card when the purchase is valid.
+  ///
+  /// A newly purchased card is initially marked as unplayable.
   bool developmentCardPurchase(Player player) {
     if (player != getActivePlayer()) return false;
     if (!player.canBuyDevelopmentCard()) return false;
-    if (developmentCardDeck.cardDeck.isEmpty) return false;
+    if (state.developmentCardDeck.cardDeck.isEmpty) return false;
 
     player.iron--;
     player.fish--;
     player.cattle--;
 
-    final card = developmentCardDeck.cardDeck.removeLast();
+    final card = state.developmentCardDeck.cardDeck.removeLast();
 
     player.developmentCards.add((card, false));
 
@@ -67,69 +54,88 @@ class GameController {
     return true;
   }
 
-
-  /// eine Straßenkarte spielen
+  /// Places one free road while the active player has a Road Building card.
+  ///
+  /// The card remains available so the caller can place its second road.
   bool playRoadDevelopmentCard(Edge edge) {
-
     Player activePlayer = getActivePlayer();
-    if(!getActivePlayer().developmentCards.contains((DevelopmentCardType.roadBuilding, true))) return false;
+    if (!getActivePlayer().developmentCards.contains((
+      DevelopmentCardType.roadBuilding,
+      true,
+    ))) {
+      return false;
+    }
     if (activePlayer.remainingRoads <= 0) return false;
-    // Kante und Verbindung zum eigenen Straßennetz oder Gebäude prüfen.
     if (!possibleToPlaceRoad(edge)) return false;
-    activePlayer.remainingRoads --;
-    // Straße platzieren und den Vorrat des Spielers reduzieren.
+    activePlayer.remainingRoads--;
     edge.roadOwner = activePlayer.color;
 
     return true;
   }
 
-
- /// eine bestimmte Anzahl von Ressourcen von der Bank bekommen und die
-  /// wirkliche Anzahl als Rückgabe
+  /// Transfers up to [amount] cards of [resource] from the bank to the active
+  /// player and returns the number actually transferred.
   int getResourceFromBank(ResourceType resource, {int amount = 1}) {
-
     if (resource == ResourceType.empty) return 0;
     if (amount <= 0) return 0;
 
     final activePlayer = getActivePlayer();
-    int resourceAmount = bank.getResource(resource, amount: amount);
+    int resourceAmount = state.bank.getResource(resource, amount: amount);
 
     activePlayer.addResource(resource: resource, amount: resourceAmount);
 
-     return resourceAmount;
+    return resourceAmount;
   }
 
-  /// eine Year of Plenty karte wird gespielt
+  /// Plays Year of Plenty with the two selected resources.
   bool playYearOfPlentyCard(ResourceType card1, ResourceType card2) {
-    if (!getActivePlayer().developmentCards.contains((DevelopmentCardType.yearOfPlenty, true))) return false;
-    if (card1 == ResourceType.empty || card2 == ResourceType.empty) return false;
+    if (!getActivePlayer().developmentCards.contains((
+      DevelopmentCardType.yearOfPlenty,
+      true,
+    ))) {
+      return false;
+    }
+    if (card1 == ResourceType.empty || card2 == ResourceType.empty) {
+      return false;
+    }
 
     if (card1 == card2) {
-      if (bank.getAmount(card1) < 2) return false;
+      if (state.bank.getAmount(card1) < 2) return false;
     } else {
-      if (bank.getAmount(card1) < 1 || bank.getAmount(card2) < 1) return false;
+      if (state.bank.getAmount(card1) < 1 || state.bank.getAmount(card2) < 1) {
+        return false;
+      }
     }
 
     getResourceFromBank(card1);
     getResourceFromBank(card2);
 
-    getActivePlayer().developmentCards.remove((DevelopmentCardType.yearOfPlenty, true));
+    getActivePlayer().developmentCards.remove((
+      DevelopmentCardType.yearOfPlenty,
+      true,
+    ));
 
     return true;
   }
 
-
-  /// eine Monopolkarte wird gespielt
+  /// Transfers the selected resource from every opponent to the active player.
   bool playMonopolyCard(ResourceType stealingType) {
-
-    if(!getActivePlayer().developmentCards.contains((DevelopmentCardType.monopoly, true))) return false;
+    if (!getActivePlayer().developmentCards.contains((
+      DevelopmentCardType.monopoly,
+      true,
+    ))) {
+      return false;
+    }
     if (stealingType == ResourceType.empty) return false;
 
-    getActivePlayer().developmentCards.remove((DevelopmentCardType.monopoly, true));
+    getActivePlayer().developmentCards.remove((
+      DevelopmentCardType.monopoly,
+      true,
+    ));
 
     int sum = 0;
 
-    for (final player in players) {
+    for (final player in state.players) {
       if (player == getActivePlayer()) continue;
       int playerAmount = player.getResourceCards()[stealingType] ?? 0;
       sum += playerAmount;
@@ -143,19 +149,15 @@ class GameController {
     return true;
   }
 
-
-
-
-
-
-  /// eine Ritter Entwicklungskarte wird gespielt
+  /// Plays a Knight card, moves the robber, and optionally steals from [victim].
+  ///
+  /// The caller must validate [victim] and update Largest Army separately.
   bool playAKnightCard(Player player, Hexagon target, Player? victim) {
     if (player != getActivePlayer()) return false;
-    if (!player.developmentCards.contains((DevelopmentCardType.knight, true)))
+    if (!player.developmentCards.contains((DevelopmentCardType.knight, true))) {
       return false;
+    }
     if (!moveRobber(target)) return false;
-
-    // if (!getPossibleVictimsForRobber(target).contains(victim)) return false;
 
     if (victim != null) stealRandomResource(victim);
 
@@ -164,11 +166,14 @@ class GameController {
     return true;
   }
 
-  // Updaten des Spielzustands: der Spieler mit der stärksten Rittermacht
+  /// Awards Largest Army to the player with the most played Knights.
+  ///
+  /// At least three Knights are required. Initial ties favor player order;
+  /// later ties do not transfer ownership.
   void updateLargestArmyOwner() {
     Player? strongestArmyOwner;
 
-    for (final player in players) {
+    for (final player in state.players) {
       if (player.playedKnights >= 3 &&
           (strongestArmyOwner == null ||
               player.playedKnights > strongestArmyOwner.playedKnights)) {
@@ -176,23 +181,23 @@ class GameController {
       }
     }
     if (strongestArmyOwner == null) return;
-    if (largestArmyOwner == null) {
-      largestArmyOwner = strongestArmyOwner;
+    if (state.largestArmyOwner == null) {
+      state.largestArmyOwner = strongestArmyOwner;
       strongestArmyOwner.winPoints += 2;
       return;
     }
 
-    if (strongestArmyOwner.playedKnights > largestArmyOwner!.playedKnights) {
-      largestArmyOwner!.winPoints -= 2;
-      largestArmyOwner = strongestArmyOwner;
+    if (strongestArmyOwner.playedKnights >
+        state.largestArmyOwner!.playedKnights) {
+      state.largestArmyOwner!.winPoints -= 2;
+      state.largestArmyOwner = strongestArmyOwner;
       strongestArmyOwner.winPoints += 2;
       return;
     }
   }
 
-  /// Steals one card of the resources from [victim] and gives it to the
-  /// active player. Returns the stolen resource, or null if the victim has
-  /// no cards left.
+  /// Steals one random resource from [victim] and gives it to the active
+  /// player. Returns null if the victim has no cards.
   ResourceType? stealRandomResource(Player victim) {
     final resourceCards = <ResourceType>[];
 
@@ -212,15 +217,13 @@ class GameController {
     return stolen;
   }
 
-  /// Gibt alle Gegner zurück, deren Siedlung oder Stadt an das Hexagon
-  /// [target] angrenzt. Der aktive Spieler selbst sowie Spieler ohne
-  /// Gebäude an diesem Feld werden nicht zurückgegeben.
+  /// Returns opponents with a settlement or city adjacent to [target].
   List<Player> getPossibleVictimsForRobber(Hexagon target) {
     final activePlayer = getActivePlayer();
     final victimColors = <PlayerColor>{};
 
     for (final corner in target.corners) {
-      final node = gameBoard.getNode(corner.x, corner.y);
+      final node = state.gameBoard.getNode(corner.x, corner.y);
       if (node == null || node.building == null) continue;
 
       final owner = node.owner;
@@ -229,30 +232,32 @@ class GameController {
       victimColors.add(owner);
     }
 
-    return players
+    return state.players
         .where((player) => victimColors.contains(player.color))
         .toList();
   }
 
-  /// calculates the number of cards a player has to give away when the robber gets
-  /// rolled
+  /// Returns how many cards [p] must discard after a seven is rolled.
   int calculateCardsToThrowAway(Player p) {
     int sum = p.stone + p.cattle + p.fish + p.iron + p.wood;
     return sum > 7 ? sum ~/ 2 : 0;
   }
 
-  /// Räuber umplatzieren
+  /// Moves the robber to [target].
+  ///
+  /// Returns false if no robber exists or [target] is its current position.
+  /// Board membership is not validated.
   bool moveRobber(Hexagon target) {
-    /// Räuber MUSS Position ändern
-    final robber = gameBoard.robber;
+    final robber = state.gameBoard.robber;
     if (robber == null) return false;
     if (target == robber.currentPosition) return false;
     robber.currentPosition = target;
     return true;
   }
 
-  /// zieht die Ressourcen vom Spieler ab, die er ausgwählt hatte.
-  /// sollte er zu wenig besitzen, wird false zurück gegeben
+  /// Removes the required resources from [player] when the selection is valid.
+  ///
+  /// Removed cards are not returned to the bank.
   bool discardResourcesForRobber(
     Player player,
     Map<ResourceType, int> selectedResources,
@@ -294,29 +299,29 @@ class GameController {
 
   /// Returns all resource fields that produce for [diceValue].
   List<Hexagon> getRolledHexagons(int diceValue) {
-    return gameBoard.getHexagonWithRolledNumber(diceValue);
+    return state.gameBoard.getHexagonWithRolledNumber(diceValue);
   }
 
   /// Gives each settlement or city next to a producing field its resource.
+  ///
+  /// Resources are currently added without reducing the bank stock.
   void distributeResources(int diceValue) {
     List<Hexagon> rolledHexagons = getRolledHexagons(diceValue);
-    // Für jedes Hexagon prüfen, ob eine der Ecken ein Node ist, der im
-    // Besitz eines Spielers ist
     for (final hex in rolledHexagons) {
-      // Felder mit Räuber liefern keine Ressourcen
-      if (gameBoard.robber?.currentPosition == hex) continue;
+      // A field occupied by the robber does not produce resources.
+      if (state.gameBoard.robber?.currentPosition == hex) continue;
 
       List<Point2D> hexCorners = hex.corners;
 
       for (final corner in hexCorners) {
-        final node = gameBoard.getNode(corner.x, corner.y);
+        final node = state.gameBoard.getNode(corner.x, corner.y);
 
         if (node != null) {
           final PlayerColor? owner = node.owner;
           final BuildingType? building = node.building;
 
           if (owner != null && building != null) {
-            for (final p in players) {
+            for (final p in state.players) {
               if (p.color == owner) {
                 p.addResource(
                   resource: hex.type,
@@ -333,18 +338,17 @@ class GameController {
 
   /// Returns the player whose turn is currently active.
   Player getActivePlayer() {
-    return players[activePlayerIndex];
+    return state.activePlayer;
   }
 
-  // setzt aktiven Spieler für die nächste Runde, wird später bei
-  // am Ende jeder Runde aufgerufen
+  /// Advances the turn to the next player.
   void endTurn() {
-    activePlayerIndex = (activePlayerIndex + 1) % players.length;
+    state.activePlayerIndex =
+        (state.activePlayerIndex + 1) % state.players.length;
   }
 
-  // setzt/baut eine Siedlung auf einen node. Falls erfolgreich: true, sonst false
+  /// Builds and pays for a settlement on [node].
   bool placeSettlement(Node node) {
-    // Abstände zur nächsten Siedlung/Stadt prüfen, usw.
     if (possibleToPlaceSettlement(node) == false) return false;
 
     final activePlayer = getActivePlayer();
@@ -352,7 +356,6 @@ class GameController {
     if (activePlayer.remainingSettlements <= 0) return false;
 
     if (!tryPayForSettlement(activePlayer)) {
-      // print('Not enough resources to build a settlement.');
       return false;
     }
 
@@ -362,8 +365,7 @@ class GameController {
     return true;
   }
 
-  // baut eine Stadt auf einen Knoten, auf dem schon eine Siedlung des sleben
-  // Spielers gesetzt sein muss
+  /// Upgrades an owned settlement on [node] to a city.
   bool upgradeSettlementToCity(Node node) {
     if (!possibleToPlaceCity(node)) return false;
 
@@ -378,44 +380,38 @@ class GameController {
     return true;
   }
 
-  // Baut eine Straße auf einer freien, mit dem Spieler verbundenen Kante.
-  // Falls erfolgreich: true, sonst false.
+  /// Builds and pays for a road on [edge].
   bool placeRoad(Edge edge) {
-    // Kante und Verbindung zum eigenen Straßennetz oder Gebäude prüfen.
     if (!possibleToPlaceRoad(edge)) return false;
 
     final activePlayer = getActivePlayer();
 
-    // Verfügbare Straßen und Ressourcen prüfen.
     if (activePlayer.remainingRoads <= 0) return false;
     if (!tryPayForRoad(activePlayer)) return false;
 
-    // Straße platzieren und den Vorrat des Spielers reduzieren.
     edge.roadOwner = activePlayer.color;
     activePlayer.remainingRoads--;
     return true;
   }
 
-  // Prüft Abstandsregeln zum Siedlung/Stadt bauen:
-  // beide dürfen nicht direkt neben einer anderen gebauet werden
+  /// Checks that [n] is empty and has no adjacent building.
   bool possibleToPlaceSettlement(Node n) {
     if (n.owner != null || n.building != null) {
       return false;
     }
 
-    Set<Node> adjacentNodes = gameBoard.getAdjacentNodesToNode(n);
+    Set<Node> adjacentNodes = state.gameBoard.getAdjacentNodesToNode(n);
     for (final node in adjacentNodes) {
       if (node.owner != null || node.building != null) return false;
     }
     return true;
   }
 
-  // Prüft, ob ein Knoten geeignet dafür ist, eine Stadt zu bauen
-  // Prüfung ist nur ein Teil, Ressourcen und Straßen werden in
-  // anderen Methoden geprüft
+  /// Checks that [n] is the active player's settlement and that all adjacent
+  /// nodes are empty.
   bool possibleToPlaceCity(Node n) {
     Player activePlayer = getActivePlayer();
-    Set<Node> adjacentNodes = gameBoard.getAdjacentNodesToNode(n);
+    Set<Node> adjacentNodes = state.gameBoard.getAdjacentNodesToNode(n);
     for (final node in adjacentNodes) {
       if (node.owner != null || node.building != null) return false;
     }
@@ -423,26 +419,23 @@ class GameController {
         n.building == BuildingType.settlement;
   }
 
-  // Gibt eine Liste von Kanten zurück, auf denen es für den aktiven
-  // Spiele möglich wäre, eine Straße zu bauen
+  /// Returns all edges on which the active player can currently build a road.
   List<Edge> getPossibleEdgesToPlaceRoad() {
-
     List<Edge> possibleEdges = [];
-    final activePlayer = getActivePlayer();
 
-    for(final edge in gameBoard.allEdges) {
-       if (possibleToPlaceRoad(edge)){
-         possibleEdges.add(edge);
-       }
+    for (final edge in state.gameBoard.allEdges) {
+      if (possibleToPlaceRoad(edge)) {
+        possibleEdges.add(edge);
+      }
     }
     return possibleEdges;
   }
 
-  // Prüft, ob es möglich ist, eine Straße zwischen zwei Knoten zu bauen
+  /// Checks whether [edge] is free and connected to the active player.
   bool possibleToPlaceRoad(Edge edge) {
     final activePlayer = getActivePlayer();
 
-    if (!gameBoard.allEdges.contains(edge) || edge.roadOwner != null) {
+    if (!state.gameBoard.allEdges.contains(edge) || edge.roadOwner != null) {
       return false;
     }
 
@@ -455,7 +448,7 @@ class GameController {
           node.building != null && node.owner == activePlayer.color;
       if (hasOwnBuilding) return true;
 
-      final connectsToOwnRoad = gameBoard.allEdges.any(
+      final connectsToOwnRoad = state.gameBoard.allEdges.any(
         (otherEdge) =>
             otherEdge.roadOwner == activePlayer.color &&
             (otherEdge.n == node || otherEdge.m == node),
@@ -466,7 +459,7 @@ class GameController {
     return false;
   }
 
-  // Ressourcen abziehen, wenn Spieler Siedlung baut
+  /// Deducts the settlement cost if [activePlayer] can afford it.
   bool tryPayForSettlement(Player activePlayer) {
     if (activePlayer.wood >= 1 &&
         activePlayer.stone >= 1 &&
@@ -481,7 +474,7 @@ class GameController {
     return false;
   }
 
-  // Ressourcen abziehen, wenn Spieler eine Stadt baut
+  /// Deducts the city cost if [activePlayer] can afford it.
   bool tryPayForCity(Player activePlayer) {
     if (activePlayer.iron >= 3 && activePlayer.fish >= 2) {
       activePlayer.iron -= 3;
@@ -491,7 +484,7 @@ class GameController {
     return false;
   }
 
-  // Ressourcen abziehen, wenn Spieler eine Straße baut
+  /// Deducts the road cost if [activePlayer] can afford it.
   bool tryPayForRoad(Player activePlayer) {
     if (activePlayer.wood >= 1 && activePlayer.stone >= 1) {
       activePlayer.wood -= 1;

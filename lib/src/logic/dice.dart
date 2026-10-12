@@ -7,7 +7,7 @@ class Dices {
 
   Dices();
 
-  /// Returns the values of both dice separately for later display.
+  /// Returns the two results of one roll.
   (int, int) rollDices() {
     final dice1 = diceValues[random.nextInt(diceValues.length)];
     final dice2 = diceValues[random.nextInt(diceValues.length)];

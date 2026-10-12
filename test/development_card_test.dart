@@ -4,6 +4,7 @@ import 'package:game_of_hexia/src/logic/game_controller.dart';
 import 'package:game_of_hexia/src/models/building_type.dart';
 import 'package:game_of_hexia/src/models/development_card_deck.dart';
 import 'package:game_of_hexia/src/models/development_card_type.dart';
+import 'package:game_of_hexia/src/models/game_state.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
@@ -42,11 +43,10 @@ void main() {
       ..fish = 1
       ..iron = 1;
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
-    final expectedCard = controller.developmentCardDeck.cardDeck.last;
+    final expectedCard = controller.state.developmentCardDeck.cardDeck.last;
 
     final purchased = controller.developmentCardPurchase(player);
 
@@ -55,7 +55,7 @@ void main() {
     expect(player.fish, 0);
     expect(player.iron, 0);
     expect(player.developmentCards, [(expectedCard, false)]);
-    expect(controller.developmentCardDeck.cardDeck, hasLength(24));
+    expect(controller.state.developmentCardDeck.cardDeck, hasLength(24));
   });
 
   test('rejects a development card purchase without enough resources', () {
@@ -63,9 +63,8 @@ void main() {
       ..cattle = 1
       ..fish = 1;
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
 
     final purchased = controller.developmentCardPurchase(player);
@@ -75,7 +74,7 @@ void main() {
     expect(player.fish, 1);
     expect(player.iron, 0);
     expect(player.developmentCards, isEmpty);
-    expect(controller.developmentCardDeck.cardDeck, hasLength(25));
+    expect(controller.state.developmentCardDeck.cardDeck, hasLength(25));
   });
 
   test('rejects a development card purchase by an inactive player', () {
@@ -85,9 +84,11 @@ void main() {
       ..fish = 1
       ..iron = 1;
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(
+        gameBoard: HexagonBoard(radius: 1),
+        players: [activePlayer, inactivePlayer],
+      ),
       dice: Dices(),
-      players: [activePlayer, inactivePlayer],
     );
 
     final purchased = controller.developmentCardPurchase(inactivePlayer);
@@ -97,7 +98,7 @@ void main() {
     expect(inactivePlayer.fish, 1);
     expect(inactivePlayer.iron, 1);
     expect(inactivePlayer.developmentCards, isEmpty);
-    expect(controller.developmentCardDeck.cardDeck, hasLength(25));
+    expect(controller.state.developmentCardDeck.cardDeck, hasLength(25));
   });
 
   test('rejects a development card purchase when the deck is empty', () {
@@ -106,11 +107,10 @@ void main() {
       ..fish = 1
       ..iron = 1;
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
-    controller.developmentCardDeck.cardDeck.clear();
+    controller.state.developmentCardDeck.cardDeck.clear();
 
     final purchased = controller.developmentCardPurchase(player);
 
@@ -125,9 +125,8 @@ void main() {
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     player.developmentCards.add((DevelopmentCardType.yearOfPlenty, true));
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
 
     final played = controller.playYearOfPlentyCard(
@@ -138,8 +137,8 @@ void main() {
     expect(played, isTrue);
     expect(player.wood, 1);
     expect(player.iron, 1);
-    expect(controller.bank.getAmount(ResourceType.wood), 18);
-    expect(controller.bank.getAmount(ResourceType.iron), 18);
+    expect(controller.state.bank.getAmount(ResourceType.wood), 18);
+    expect(controller.state.bank.getAmount(ResourceType.iron), 18);
     expect(
       player.developmentCards,
       isNot(contains((DevelopmentCardType.yearOfPlenty, true))),
@@ -150,9 +149,8 @@ void main() {
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     player.developmentCards.add((DevelopmentCardType.yearOfPlenty, true));
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
 
     final played = controller.playYearOfPlentyCard(
@@ -162,7 +160,7 @@ void main() {
 
     expect(played, isTrue);
     expect(player.fish, 2);
-    expect(controller.bank.getAmount(ResourceType.fish), 17);
+    expect(controller.state.bank.getAmount(ResourceType.fish), 17);
     expect(player.developmentCards, isEmpty);
   });
 
@@ -170,11 +168,10 @@ void main() {
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     player.developmentCards.add((DevelopmentCardType.yearOfPlenty, true));
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
-    controller.bank.getResource(ResourceType.stone, amount: 18);
+    controller.state.bank.getResource(ResourceType.stone, amount: 18);
 
     final played = controller.playYearOfPlentyCard(
       ResourceType.stone,
@@ -183,7 +180,7 @@ void main() {
 
     expect(played, isFalse);
     expect(player.stone, 0);
-    expect(controller.bank.getAmount(ResourceType.stone), 1);
+    expect(controller.state.bank.getAmount(ResourceType.stone), 1);
     expect(
       player.developmentCards,
       contains((DevelopmentCardType.yearOfPlenty, true)),
@@ -199,9 +196,11 @@ void main() {
       ..wood = 2;
     activePlayer.developmentCards.add((DevelopmentCardType.monopoly, true));
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(
+        gameBoard: HexagonBoard(radius: 1),
+        players: [activePlayer, firstVictim, secondVictim],
+      ),
       dice: Dices(),
-      players: [activePlayer, firstVictim, secondVictim],
     );
 
     final played = controller.playMonopolyCard(ResourceType.wood);
@@ -223,9 +222,8 @@ void main() {
     final victim = Player(color: PlayerColor.red, name: 'Red')..wood = 1;
     activePlayer.developmentCards.add((DevelopmentCardType.knight, true));
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [activePlayer, victim]),
       dice: Dices(),
-      players: [activePlayer, victim],
     );
 
     final played = controller.playAKnightCard(
@@ -248,20 +246,22 @@ void main() {
     final secondPlayer = Player(color: PlayerColor.red, name: 'Red')
       ..playedKnights = 2;
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(
+        gameBoard: HexagonBoard(radius: 1),
+        players: [firstPlayer, secondPlayer],
+      ),
       dice: Dices(),
-      players: [firstPlayer, secondPlayer],
     );
 
     controller.updateLargestArmyOwner();
 
-    expect(controller.largestArmyOwner, firstPlayer);
+    expect(controller.state.largestArmyOwner, firstPlayer);
     expect(firstPlayer.winPoints, 2);
 
     secondPlayer.playedKnights = 4;
     controller.updateLargestArmyOwner();
 
-    expect(controller.largestArmyOwner, secondPlayer);
+    expect(controller.state.largestArmyOwner, secondPlayer);
     expect(firstPlayer.winPoints, 0);
     expect(secondPlayer.winPoints, 2);
   });
@@ -271,9 +271,8 @@ void main() {
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     player.developmentCards.add((DevelopmentCardType.roadBuilding, true));
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
     final edge = board.allEdges.first;
     edge.n.owner = PlayerColor.blue;

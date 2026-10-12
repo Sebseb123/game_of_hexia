@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:game_of_hexia/src/logic/dice.dart';
 import 'package:game_of_hexia/src/logic/game_controller.dart';
 import 'package:game_of_hexia/src/models/building_type.dart';
+import 'package:game_of_hexia/src/models/game_state.dart';
 import 'package:game_of_hexia/src/models/hexagon_board.dart';
 import 'package:game_of_hexia/src/models/player.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
@@ -11,9 +12,8 @@ void main() {
   test('rolls values between 2 and 12', () {
     final board = HexagonBoard(radius: 2);
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: []),
       dice: Dices(),
-      players: [],
     );
 
     for (var i = 0; i < 100; i++) {
@@ -31,9 +31,8 @@ void main() {
     node.building = BuildingType.settlement;
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
 
     controller.distributeResources(8);
@@ -51,9 +50,8 @@ void main() {
     node.building = BuildingType.city;
     final player = Player(color: PlayerColor.red, name: 'Red');
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
 
     controller.distributeResources(6);
@@ -64,9 +62,8 @@ void main() {
   test('discards the selected resource amounts for the robber', () {
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
     player.wood = 4;
     player.fish = 4;
@@ -86,9 +83,8 @@ void main() {
     () {
       final player = Player(color: PlayerColor.blue, name: 'Blue');
       final controller = GameController(
-        gameBoard: HexagonBoard(radius: 1),
+        state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
         dice: Dices(),
-        players: [player],
       );
       player.wood = 4;
       player.fish = 4;
@@ -108,9 +104,11 @@ void main() {
     final active = Player(color: PlayerColor.blue, name: 'Blue');
     final victim = Player(color: PlayerColor.red, name: 'Red');
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(
+        gameBoard: HexagonBoard(radius: 1),
+        players: [active, victim],
+      ),
       dice: Dices(),
-      players: [active, victim],
     );
     victim.wood = 3;
     victim.fish = 2;
@@ -126,9 +124,11 @@ void main() {
     final active = Player(color: PlayerColor.blue, name: 'Blue');
     final victim = Player(color: PlayerColor.red, name: 'Red');
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(
+        gameBoard: HexagonBoard(radius: 1),
+        players: [active, victim],
+      ),
       dice: Dices(),
-      players: [active, victim],
     );
 
     expect(controller.stealRandomResource(victim), isNull);
@@ -145,9 +145,8 @@ void main() {
     node.building = BuildingType.settlement;
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
     board.robber = Robber(hexagon);
 
@@ -160,9 +159,8 @@ void main() {
     final board = HexagonBoard(radius: 2);
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
     final corner = board.getHexagon(2, 0)!.bottomRight;
     final node = board.getNode(corner.x, corner.y)!;
@@ -185,9 +183,8 @@ void main() {
     final board = HexagonBoard(radius: 2);
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
     final corner = board.getHexagon(2, 0)!.bottomRight;
     final node = board.getNode(corner.x, corner.y)!;
@@ -210,9 +207,8 @@ void main() {
     final board = HexagonBoard(radius: 2);
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
     final edge = board.allEdges.first;
 
@@ -246,9 +242,8 @@ void main() {
   test('pays city costs only with enough resources', () {
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
     player.iron = 3;
     player.fish = 2;
@@ -267,9 +262,8 @@ void main() {
   test('pays road costs only with enough resources', () {
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: HexagonBoard(radius: 1),
+      state: GameState(gameBoard: HexagonBoard(radius: 1), players: [player]),
       dice: Dices(),
-      players: [player],
     );
     player.wood = 1;
     player.stone = 1;
@@ -288,9 +282,8 @@ void main() {
     final board = HexagonBoard(radius: 1);
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
     final hexagon = board.getHexagon(1, 0)!;
     final node = board.getNode(hexagon.top.x, hexagon.top.y)!;
@@ -312,9 +305,8 @@ void main() {
     final board = HexagonBoard(radius: 1);
     final player = Player(color: PlayerColor.blue, name: 'Blue');
     final controller = GameController(
-      gameBoard: board,
+      state: GameState(gameBoard: board, players: [player]),
       dice: Dices(),
-      players: [player],
     );
     final edge = board.allEdges.first;
     edge.n.owner = PlayerColor.blue;

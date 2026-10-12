@@ -1,17 +1,19 @@
-import 'package:game_of_hexia/src/logic/dice.dart';
-import 'package:game_of_hexia/src/logic/game_controller.dart';
-import 'package:game_of_hexia/src/models/hexagon.dart';
-import 'package:game_of_hexia/src/models/hexagon_board.dart';
-import 'package:game_of_hexia/src/models/player.dart';
-import 'package:game_of_hexia/src/models/node.dart';
-import 'package:game_of_hexia/src/models/edge.dart';
-import 'package:game_of_hexia/src/models/development_card_type.dart';
-import 'package:game_of_hexia/src/models/resource_type.dart';
+// ignore_for_file: avoid_print
 
 import 'dart:io';
 
+import 'package:game_of_hexia/src/logic/dice.dart';
+import 'package:game_of_hexia/src/logic/game_controller.dart';
+import 'package:game_of_hexia/src/models/development_card_type.dart';
+import 'package:game_of_hexia/src/models/edge.dart';
+import 'package:game_of_hexia/src/models/game_state.dart';
+import 'package:game_of_hexia/src/models/hexagon.dart';
+import 'package:game_of_hexia/src/models/hexagon_board.dart';
+import 'package:game_of_hexia/src/models/node.dart';
+import 'package:game_of_hexia/src/models/player.dart';
+import 'package:game_of_hexia/src/models/resource_type.dart';
+
 void main() {
-  // Collect the players before creating the game controller.
   var playerCount = 0;
   while (playerCount < 2 || playerCount > 6) {
     stdout.write('Wie viele Spieler? (2-6): ');
@@ -47,21 +49,18 @@ void main() {
     players.add(Player(color: color, name: name));
   }
 
-  // Create and populate a board with the selected size.
   stdout.write('Radius eingeben: ');
   final radius = int.parse(stdin.readLineSync()!);
   final board = HexagonBoard(radius: radius);
   final dice = Dices();
   final gameController = GameController(
-    gameBoard: board,
+    state: GameState(gameBoard: board, players: players),
     dice: dice,
-    players: players,
   );
 
   board.placeHexagons();
   board.placeNumberDiscs();
 
-  // Print the board and a few geometry and dice diagnostics.
   print(board);
   final node = board.getHexagon(radius, 0)!.bottomRight;
   print(board.initNodes().length);
@@ -75,10 +74,9 @@ void main() {
   if (rolled == 7) handleRobberTurn(gameController, rolled);
 }
 
-/// Durchläuft alle Spieler mit mehr als 7 Karten, ruft readResourcesFromConsole auf
-/// und übergibt sie dem Controller
+/// Prompts every affected player to discard the required resources.
 void handleRobberDiscard(GameController gc) {
-  for (final player in gc.players) {
+  for (final player in gc.state.players) {
     int amountToDiscard = gc.calculateCardsToThrowAway(player);
     if (amountToDiscard > 0) {
       while (true) {
@@ -95,9 +93,9 @@ void handleRobberDiscard(GameController gc) {
   }
 }
 
-/// Liest die Auswahl der Ressourcen, die ein Spieler abwerfen möchte, wenn
-/// der Räuber gewürfelt wurde und der Spieler mehr als 7 Karten besitzt
-/// Vorübergehend als I/O, später über GUI
+/// Prompts [player] until exactly [amount] resources are selected.
+///
+/// Returns an empty selection when [amount] is not positive.
 Map<ResourceType, int> readResourcesFromConsole(Player player, int amount) {
   if (amount <= 0) {
     return {};
@@ -148,10 +146,9 @@ Map<ResourceType, int> readResourcesFromConsole(Player player, int amount) {
   }
 }
 
-/// Fragt ab, von welchem Gegner am Hexagon [target] eine Ressource
-/// gestohlen werden soll. Gibt null zurück, wenn niemand bestohlen
-/// werden kann.
-/// Vorübergehend als I/O, später über GUI
+/// Prompts for an opponent with a building adjacent to [target].
+///
+/// Returns null when no such opponent exists.
 Player? pickVictimFromConsole(GameController gc, Hexagon target) {
   final victims = gc.getPossibleVictimsForRobber(target);
 
@@ -179,12 +176,11 @@ Player? pickVictimFromConsole(GameController gc, Hexagon target) {
   }
 }
 
-/// Fragt ab, auf welches Feld der Räuber gesetzt werden soll. Das aktuelle
-/// Räuberfeld wird nicht angeboten, weil der Räuber die Position wechseln
-/// muss. Gibt null zurück, wenn der Spieler abbrechen will.
-/// Vorübergehend als I/O, später über GUI
+/// Prompts for a robber destination other than its current field.
+///
+/// Entering zero cancels the selection.
 Hexagon? pickRobberTarget(GameController gc) {
-  final board = gc.gameBoard;
+  final board = gc.state.gameBoard;
   final currentPosition = board.robber?.currentPosition;
   final fields = board
       .getHexagons()
@@ -221,15 +217,14 @@ Hexagon? pickRobberTarget(GameController gc) {
   }
 }
 
-/// Den ganzen Ablauf des Räubers in einer Methode zusammengefasst
+/// Handles discarding, robber movement, and stealing after a seven is rolled.
 void handleRobberTurn(GameController gc, int diceValue) {
   if (diceValue != 7) return;
 
   gc.distributeResources(diceValue);
-  handleRobberDiscard(gc); // 7-Karten-Regel
+  handleRobberDiscard(gc);
 
-  // Der Räuber muss versetzt werden. Solange moveRobber scheitert, wird
-  // erneut gefragt, damit der Zug nicht unvollständig endet.
+  // Retry invalid destinations; cancellation leaves the robber in place.
   Hexagon? target;
   while (true) {
     final choice = pickRobberTarget(gc);
@@ -247,25 +242,21 @@ void handleRobberTurn(GameController gc, int diceValue) {
     print('Der Räuber muss die Position wechseln. Bitte erneut wählen.');
   }
 
-  // Ziel ist jetzt die neue Position, nicht das Feld davor
   final victim = pickVictimFromConsole(gc, target);
   if (victim == null) {
     return;
   }
 
-  // addResource braucht benannte Parameter, amount ist optional
   final stolen = gc.stealRandomResource(victim);
   if (stolen == null) {
     print('Der Gegner hat keine Karte zum Stehlen.');
     return;
   }
 
-  // stealRandomResource gibt dem aktiven Spieler die Karte bereits
   print('Es wurde ${stolen.name} gestohlen.');
 }
 
-/// Ablauf, wenn ein Spieler eine Monopolkarte spielt
-
+/// Prompts for a resource and plays the active player's Monopoly card.
 void handlePlayedMonopolyCardTurn(GameController gc) {
   final resourceTypes = ResourceType.values
       .where((resource) => resource != ResourceType.empty)
@@ -295,13 +286,14 @@ void handlePlayedMonopolyCardTurn(GameController gc) {
   }
 }
 
-///  Ablauf, wenn ein Spieler eine Ritterkarte spielt
+/// Prompts for a robber target and plays the active player's Knight card.
 void handlePlayedKnightCardTurn(GameController gc) {
   if (!gc.getActivePlayer().developmentCards.contains((
     DevelopmentCardType.knight,
     true,
-  )))
+  ))) {
     return;
+  }
 
   final target = pickRobberTarget(gc);
   if (target == null) return;
@@ -309,13 +301,14 @@ void handlePlayedKnightCardTurn(GameController gc) {
   gc.playAKnightCard(gc.getActivePlayer(), target, victim);
 }
 
-/// Ablauf, wenn ein Spieler eine Straßen Entwicklungskarte spielt
+/// Prompts for up to two free roads from a Road Building card.
 void handleRoadDevelopmentCard(GameController gc) {
   if (!gc.getActivePlayer().developmentCards.contains((
     DevelopmentCardType.roadBuilding,
     true,
-  )))
+  ))) {
     return;
+  }
 
   if (gc.getActivePlayer().remainingRoads <= 0) {
     gc.getActivePlayer().developmentCards.remove((
@@ -385,8 +378,8 @@ void handleRoadDevelopmentCard(GameController gc) {
     if (gc.getActivePlayer().remainingRoads > 0) {
       print(
         'Du hast die Straßenkarte ausgespielt. '
-        'Da du noch eine Straße bauen kannst:'
-        'Auf welcher Kante möchtest Du deine zweite Straße bauen?'
+        'Da du noch eine Straße bauen kannst: '
+        'Auf welcher Kante möchtest Du deine zweite Straße bauen? '
         'Möchtest Du keine weitere Straße bauen, tippe die 0.',
       );
 
@@ -430,11 +423,14 @@ void handleRoadDevelopmentCard(GameController gc) {
   }
 }
 
-/// Ablauf, wenn ein Spieler eine Year of Plenty (2 Ressourcen)
-/// Entwicklungskarte spielt
+/// Prompts for two available resources and plays Year of Plenty.
 void handleYearOfPlentyCardTurn(GameController gc) {
-
-  if (!gc.getActivePlayer().developmentCards.contains((DevelopmentCardType.yearOfPlenty, true, ))) {return;}
+  if (!gc.getActivePlayer().developmentCards.contains((
+    DevelopmentCardType.yearOfPlenty,
+    true,
+  ))) {
+    return;
+  }
 
   final resourceTypes = ResourceType.values
       .where((resource) => resource != ResourceType.empty)
@@ -450,7 +446,7 @@ void handleYearOfPlentyCardTurn(GameController gc) {
     for (var i = 0; i < resourceTypes.length; i++) {
       print(
         '${i + 1}: ${resourceTypes[i].name} '
-        '(Bank: ${gc.bank.getAmount(resourceTypes[i])})',
+        '(Bank: ${gc.state.bank.getAmount(resourceTypes[i])})',
       );
     }
 
@@ -467,7 +463,7 @@ void handleYearOfPlentyCardTurn(GameController gc) {
         .where((selected) => selected == resource)
         .length;
 
-    if (gc.bank.getAmount(resource) <= alreadySelected) {
+    if (gc.state.bank.getAmount(resource) <= alreadySelected) {
       print('Dieser Rohstoff ist nicht ausreichend in der Bank vorhanden.');
       continue;
     }
