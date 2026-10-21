@@ -8,6 +8,7 @@ class Edge {
   Node n;
   Node m;
   PlayerColor? roadOwner;
+  bool isCoastalEdge = false;
 
   Edge(this.n, this.m) {
     if (n == m) throw ArgumentError('An edge needs two different nodes');

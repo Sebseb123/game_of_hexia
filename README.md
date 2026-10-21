@@ -26,6 +26,7 @@ vollständige Benutzeroberfläche ist noch nicht umgesetzt.
 - Berechnung, Vergabe und Übertragung der größten Rittermacht
 - Konsolenprototyp für Spielaufbau und einzelne Spielaktionen
 - 36 automatisierte Tests und eine fehlerfreie statische Analyse
+- Zufällige Verteilung der Häfen
 
 ### Bekannte Lücken
 
@@ -151,7 +152,6 @@ Die derzeit 36 Tests prüfen unter anderem:
 
 ### Handel und Oberfläche
 
-- Handel mit Bank und Mitspielern implementieren
-- Seehäfen mit 3:1- und 2:1-Tausch ergänzen
+- Handel mit Bank unter Berücksichtigung der Häfen und mit Mitspielern implementieren
 - Stabile Spieler-ID zusätzlich zur Spielerfarbe prüfen
 - Benutzeroberfläche für Board und Spielaktionen entwickeln

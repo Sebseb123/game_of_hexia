@@ -55,5 +55,46 @@ void main() {
       final innerNode = board.getNode(corner2.x, corner2.y)!;
       expect(board.getAdjacentNodesToNode(innerNode), hasLength(3));
     });
+
+    test('places harbors at least one node apart', () {
+      final board = HexagonBoard(radius: 2);
+      final harbors = board.harbors.toList();
+
+      for (var i = 0; i < harbors.length; i++) {
+        for (var j = i + 1; j < harbors.length; j++) {
+          final firstEdge = harbors[i].edge;
+          final secondEdge = harbors[j].edge;
+          final distances = [
+            board.getShortestDistance(firstEdge.n, secondEdge.n),
+            board.getShortestDistance(firstEdge.n, secondEdge.m),
+            board.getShortestDistance(firstEdge.m, secondEdge.n),
+            board.getShortestDistance(firstEdge.m, secondEdge.m),
+          ];
+
+          expect(
+            distances.every((distance) => distance != null && distance > 1),
+            isTrue,
+            reason: 'Harbors $i and $j are too close.',
+          );
+        }
+      }
+    });
+
+    test('creates general and special harbors', () {
+      for (final radius in [2, 3, 4]) {
+        final board = HexagonBoard(radius: radius);
+
+        expect(
+          board.harbors.any((harbor) => harbor.exchangeRatio == 2),
+          isTrue,
+          reason: 'Radius $radius should have a general harbor.',
+        );
+        expect(
+          board.harbors.any((harbor) => harbor.exchangeRatio == 3),
+          isTrue,
+          reason: 'Radius $radius should have a special harbor.',
+        );
+      }
+    });
   });
 }

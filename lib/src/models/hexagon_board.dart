@@ -3,6 +3,7 @@ import 'package:game_of_hexia/src/models/hexagon.dart';
 import 'package:game_of_hexia/src/models/node.dart';
 import 'package:game_of_hexia/src/models/resource_type.dart';
 import 'package:game_of_hexia/src/models/robber.dart';
+import 'package:game_of_hexia/src/models/harbor.dart';
 
 /// A hexagonal board whose tiles use axial indices and Cartesian geometry.
 class HexagonBoard {
@@ -12,6 +13,7 @@ class HexagonBoard {
   final Map<({int x, int y}), Hexagon> _grid = {};
   final Map<Point2D, Node> _nodes = {};
   final Set<Edge> allEdges = {};
+  final Set<Harbor> harbors = {};
   Robber? robber;
 
   /// Offsets to the six neighboring axial coordinates.
@@ -43,6 +45,7 @@ class HexagonBoard {
     }
     initNodes();
     initEdges();
+    initHarbors();
   }
 
   /// Randomly assigns resources and places the robber on the first desert.
@@ -207,8 +210,16 @@ class HexagonBoard {
       for (var i = 0; i < hexagon.corners.length; i++) {
         final n = _nodes[hexagon.corners[i]];
         final m = _nodes[hexagon.corners[(i + 1) % 6]];
-
         allEdges.add(Edge(n!, m!));
+      }
+    }
+    //Sets Flag if Edge is Coastal
+    for (Edge edge in allEdges) {
+      final hexagonsAtN = getAdjacentHexagonsToNode(edge.n);
+      final hexagonsAtM = getAdjacentHexagonsToNode(edge.m);
+      final hexagonsAlongEdge = hexagonsAtN.intersection(hexagonsAtM);
+      if (hexagonsAlongEdge.length == 1) {
+        edge.isCoastalEdge = true;
       }
     }
     return allEdges;
@@ -257,33 +268,107 @@ class HexagonBoard {
   /// Formats the board row by row for console diagnostics.
   @override
   String toString() {
+    const cellWidth = 12;
     final buffer = StringBuffer();
-    var startX = radius;
-    for (var y = 0; y <= radius; y++) {
-      for (var x = startX; x < 2 * radius + 1; x++) {
-        final hexagon = _grid[(x: x, y: y)]!;
-        if (hexagon.type == ResourceType.empty) {
-          buffer.write('[Desert:0]');
-        } else {
-          buffer.write('[${hexagon.type.name}:${hexagon.numberDisc}]');
-        }
+    for (var y = 0; y <= 2 * radius; y++) {
+      final row = _grid.values.where((hexagon) => hexagon.axial.y == y).toList()
+        ..sort((a, b) => a.axial.x.compareTo(b.axial.x));
+
+      final indent = (radius - y).abs() * (cellWidth ~/ 2);
+      buffer.write(List.filled(indent, ' ').join());
+
+      for (final hexagon in row) {
+        final label = hexagon.type == ResourceType.empty
+            ? '[Desert:0]'
+            : '[${hexagon.type.name}:${hexagon.numberDisc}]';
+        buffer.write(label.padRight(cellWidth));
       }
-      startX--;
-      buffer.writeln();
-    }
-    var endX = radius * 2;
-    for (var y = radius + 1; y < 2 * radius + 1; y++) {
-      for (var x = 0; x < endX; x++) {
-        final hexagon = _grid[(x: x, y: y)]!;
-        if (hexagon.type == ResourceType.empty) {
-          buffer.write('[Desert:0]');
-        } else {
-          buffer.write('[${hexagon.type.name}:${hexagon.numberDisc}]');
-        }
-      }
-      endX--;
-      buffer.writeln();
+
+      if (y < 2 * radius) buffer.writeln();
     }
     return buffer.toString().trimRight();
   }
+
+  /// Returns the shortest path length in edges between [start] and [target].
+  int getShortestDistance(Node start, Node target) {
+    if (start == target) return 0;
+
+    final queue = <Node>[start];
+    final distances = <Node, int>{start: 0};
+    var queueIndex = 0;
+
+    while (queueIndex < queue.length) {
+      final current = queue[queueIndex++];
+      final nextDistance = distances[current]! + 1;
+
+      for (final neighbor in getAdjacentNodesToNode(current)) {
+        if (distances.containsKey(neighbor)) continue;
+        if (neighbor == target) return nextDistance;
+
+        distances[neighbor] = nextDistance;
+        queue.add(neighbor);
+      }
+    }
+    return 0;
+  }
+
+  ///Places Harbors randomly. Ends up with slightly different number than original game.
+  ///In particual only creates 8 harbors for radius 2 instead of 9
+  Set<Harbor> initHarbors() {
+    final int maxNumberOfGeneralHarbors = (0.46 * (radius * 3 + 3)).round();
+    final int maxNumberOfSpecialHarbors = (0.54 * (radius * 3 + 3)).round();
+
+    //place harbors randomly along coastal edges. Needs at least 1 Node between the edges
+    harbors.clear(); 
+    List<Edge> coastalEdges = [];
+    for (final edge in allEdges) {
+      if (edge.isCoastalEdge) {
+        coastalEdges.add(edge);
+      }
+    }
+    coastalEdges.shuffle();
+    int addedHarbors = 0;
+
+    //Place general harbors
+    while (addedHarbors < maxNumberOfGeneralHarbors && coastalEdges.isNotEmpty) {
+      final candidateEdge = coastalEdges.removeLast(); 
+      bool isValid = true;
+      for (final harbor in harbors) {
+        if (!_isAtLeastOneNodeAway(harbor.edge, candidateEdge)) {
+          isValid = false;
+          break;
+        }
+      }
+      if (isValid) { 
+        harbors.add(Harbor(edge: candidateEdge, tradeType: ResourceType.empty, exchangeRatio:  2));
+        addedHarbors++;
+      }
+    }
+
+    //Place special harbors
+    addedHarbors = 0;
+    while (addedHarbors < maxNumberOfSpecialHarbors && coastalEdges.isNotEmpty) {
+      final candidateEdge = coastalEdges.removeLast(); 
+      bool isValid = true;
+      for (final harbor in harbors) {
+        if (!_isAtLeastOneNodeAway(harbor.edge, candidateEdge)) {
+          isValid = false;
+          break;
+        }
+      }
+      if (isValid) { 
+        final tradeType = ResourceType.values[addedHarbors % 5];
+        harbors.add(Harbor(edge: candidateEdge, tradeType: tradeType, exchangeRatio:  3));
+        addedHarbors++;
+      }
+    }
+    return harbors;
+  }
+
+  bool _isAtLeastOneNodeAway(Edge A, Edge B){
+    return getShortestDistance(A.n, B.n) > 1 &&
+          getShortestDistance(A.n, B.m) > 1 &&
+          getShortestDistance(A.m, B.n) > 1 &&
+          getShortestDistance(A.m, B.m) > 1;
+  } 
 }
